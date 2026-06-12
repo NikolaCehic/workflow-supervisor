@@ -1,79 +1,168 @@
-# Workflow Skill Pack
+# Workflow Supervisor
 
-Installable workflow-control skills for agentic work across codebases, documentation projects, research, design, operations, and planning.
+Portable workflow skills for supervising messy agent work.
 
-This pack is for supervised, multi-step, high-risk, resumable, or multi-agent work. It is intentionally opt-in and should not trigger for tiny edits, ordinary README wording, routine reviews, or one-off commands.
+This repository contains an installable skill pack for Codex, Claude Code, OpenCode, HermesAgent, and other agents that can read Markdown instructions. It is built for work that is too broad, risky, ambiguous, or long-running to handle as one ordinary prompt.
+
+Use it when an agent needs to:
+
+- ground work in source material before acting
+- split a fuzzy goal into bounded work units
+- create concrete handoffs between agents or threads
+- separate implementation from verification
+- turn acceptance criteria into evidence-backed checks
+- control repair loops, retries, budgets, and stop gates
+- leave reusable Markdown state so another agent can resume
+
+Do not use it for tiny edits, one-off commands, ordinary README wording, or a task that already has clear files and clear acceptance criteria.
+
+## The Idea
+
+The pack treats open-ended work as a supervised loop:
+
+```text
+sources -> work units -> dossier -> execution -> verification -> repair -> outcome
+```
+
+`$workflow-supervisor` is the spine. The other skills are phase tools the supervisor can call when the workflow needs more structure.
+
+```text
+                source-corpus
+                      |
+workflow-supervisor --+-- work-unit
+        |             |
+        |             +-- dossier-builder
+        |             |
+        |             +-- worker-roles
+        |             |
+        |             +-- acceptance-matrix
+        |             |
+        |             +-- loop-policy
+        |
+        +-- workflow-docs
+```
+
+The goal is not bureaucracy. The goal is to stop agents from drifting, guessing, rubber-stamping their own work, or losing state after a long context window.
+
+## Quick Example
+
+Ask the agent to use the supervisor for work that needs a real loop:
+
+```text
+Use $workflow-supervisor as an agent loop goal.
+
+Migrate this repo's docs to the new API shape. Inspect the source first, split the work into units, create acceptance criteria, verify independently, repair failures, and leave a handoff another agent can resume from.
+```
+
+For a narrower phase, invoke the specific skill:
+
+```text
+Use $source-corpus to identify the sources of truth for this migration and flag contradictions.
+```
+
+```text
+Use $acceptance-matrix to turn this launch checklist into PASS, FAIL, and BLOCKED criteria with evidence requirements.
+```
+
+```text
+Use $workflow-docs to create a reusable HANDOFF.md and OUTCOME.md for the next agent.
+```
 
 ## Install
 
-Use without a global install:
+From a local checkout:
+
+```bash
+git clone https://github.com/NikolaCehic/workflow-supervisor.git
+cd workflow-supervisor
+npm test
+node ./bin/workflow-skills.mjs install --agent codex --scope user
+```
+
+After npm publication, the same installer can be run through `npx`:
 
 ```bash
 npx workflow-skill-pack install --agent codex --scope user
-npx workflow-skill-pack install --agent all --scope project --project .
 ```
 
-Install for a custom skill directory:
+Install into a project-local skill directory for all supported agents:
 
 ```bash
-npx workflow-skill-pack install --agent generic --target ./agent-skills
+node ./bin/workflow-skills.mjs install --agent all --scope project --project /path/to/project
 ```
 
-Install for another agent target:
+Install into any custom directory:
 
 ```bash
-npx workflow-skill-pack install --agent claude-code --target ~/.claude/skills
-npx workflow-skill-pack install --agent opencode --target ~/.config/opencode/skills
-npx workflow-skill-pack install --agent hermesagent --target ~/.hermes/skills
+node ./bin/workflow-skills.mjs install --agent generic --target ./agent-skills
 ```
 
-The installer never installs tests by default. It copies only the production `skills/` folders, writes `WORKFLOW_SKILL_PACK.md`, and records `.workflow-skills-install.json` with installed skills and checksums.
+The installer copies only production skill folders. It does not install the evaluation suite into agent skill directories. Each install writes:
 
-## Quick Start
+- the selected skill folders
+- `WORKFLOW_SKILL_PACK.md`
+- `.workflow-skills-install.json` with installed skills and checksums
 
-```text
-Use $workflow-supervisor as an agent loop goal to supervise a multi-step documentation migration with independent verification and repair passes.
-```
+## Supported Agents
 
-```text
-Use $work-unit to split this broad onboarding refresh into bounded, verifiable units.
-```
+| Agent | User Install | Project Install |
+|---|---|---|
+| Codex | `~/.agents/skills` | `<project>/.agents/skills` |
+| Claude Code | `${CLAUDE_HOME:-~/.claude}/skills` | `<project>/.claude/skills` |
+| OpenCode | `${OPENCODE_HOME:-~/.config/opencode}/skills` | `<project>/.opencode/skills` |
+| HermesAgent | `${HERMESAGENT_HOME:-${HERMES_HOME:-~/.hermes}}/skills` | `<project>/.hermes/skills` |
+| Generic | custom `--target` | custom `--target` |
 
-```text
-Use $acceptance-matrix to define evidence-backed PASS, FAIL, and BLOCKED criteria.
-```
+See [docs/compatibility.md](docs/compatibility.md) for adapter notes.
 
 ## Included Skills
 
-| Skill | Use When | Avoid When |
-|---|---|---|
-| `$workflow-supervisor` | Coordinating open-ended, multi-step, resumable, supervised workflows | Simple scoped tasks |
-| `$source-corpus` | Source authority, freshness, contradictions, or evidence gaps affect safe action | Ordinary file inspection |
-| `$work-unit` | A broad goal needs bounded, sequenced units | Task is already small and clear |
-| `$dossier-builder` | One bounded unit needs a handoff contract | Same-thread direct work |
-| `$worker-roles` | Separating responsibilities across agents, threads, or formal reviews | Solo routine work |
-| `$acceptance-matrix` | Completion needs row-by-row evidence | Informal review is enough |
-| `$loop-policy` | Retry, approval, budget, stop, goal, or resume rules matter | One failing command |
-| `$workflow-docs` | Durable workflow or documentation-production state is needed | Ordinary prose edits |
+| Skill | What It Does |
+|---|---|
+| `$workflow-supervisor` | Coordinates the whole loop: source grounding, work units, dossiers, verification, repair, stop gates, goal state, and outcome reporting. |
+| `$source-corpus` | Identifies and ranks sources of truth, then flags stale, missing, or contradictory evidence. |
+| `$work-unit` | Turns broad goals into bounded units with objective, dependencies, scope, done criteria, and sequencing. |
+| `$dossier-builder` | Creates a concrete handoff contract for one unit: sources, allowed surfaces, forbidden surfaces, checks, stop gates, and report shape. |
+| `$worker-roles` | Defines narrow role contracts for implementer, verifier, researcher, repair author, documenter, reviewer, and synthesizer. |
+| `$acceptance-matrix` | Converts goals into testable criteria with evidence requirements, adversarial checks, PASS/FAIL/BLOCKED states, and residual risk. |
+| `$loop-policy` | Controls sequential/parallel execution, retry limits, approvals, budgets, escalation, no-progress detection, and continuation rules. |
+| `$workflow-docs` | Generates durable Markdown workflow state and documentation-production artifacts. |
 
-## Core Workflow
+## Documentation Artifacts
 
-```text
-source corpus -> work units -> dossier -> worker roles -> acceptance matrix -> verification -> repair tickets -> workflow docs/outcome
-```
+`$workflow-docs` supports two lanes.
 
-Use the smallest set of skills needed for the risk. The supervisor is the spine; companion skills are phase tools, not an automatic cascade.
+Workflow state:
 
-## Agent Compatibility
+- `WORKFLOW.md`
+- `SOURCE-CORPUS.md`
+- `WORK-UNITS.md`
+- `DOSSIER.md`
+- `ACCEPTANCE-MATRIX.md`
+- `VERIFICATION-REPORT.md`
+- `REPAIR-TICKETS.md`
+- `DECISIONS.md`
+- `HANDOFF.md`
+- `OUTCOME.md`
+- `GOAL-STATE.md`
 
-- **Codex:** native `SKILL.md` folders plus `agents/openai.yaml`; Codex goal lifecycle is supported when goal tools are available.
-- **Claude Code:** install the same skill folders into the location you use for Claude skills or prompts; use explicit `$skill-name` invocation.
-- **OpenCode:** install the same skill folders and emit a project context file if native skill discovery is unavailable.
-- **HermesAgent:** install the same skill folders or use `emit-context` to create a portable agent instruction file.
+Documentation production:
 
-See [docs/compatibility.md](docs/compatibility.md) for details.
+- `DOCUMENTATION-BRIEF.md`
+- `CONTENT-INVENTORY.md`
+- `OUTLINE.md`
+- `CONTENT-DRAFT.md`
+- `CLAIMS-REGISTER.md`
+- `STYLE-GUIDE.md`
+- `GLOSSARY.md`
+- `ASSET-REGISTER.md`
+- `REVIEW-PLAN.md`
+- `REVISION-QUEUE.md`
+- `PUBLISHING-CHECKLIST.md`
+- `PUBLICATION-LOG.md`
+- `MAINTENANCE-PLAN.md`
 
-Compatibility is based on current public skill docs: Codex uses `SKILL.md` folders and optional `agents/openai.yaml`, with `.agents/skills` locations; Claude Code supports personal `~/.claude/skills` and project `.claude/skills`; OpenCode searches `.opencode/skills`, `.claude/skills`, `.agents/skills`, and global `~/.config/opencode/skills`; Hermes uses `~/.hermes/skills` as its primary skill directory.
+Markdown is the default, but the skills can also produce inline handoffs, ticket outlines, runbooks, spreadsheet-ready tables, design review notes, or other state that a human or agent can reuse.
 
 ## CLI
 
@@ -87,40 +176,49 @@ workflow-skills install --agent generic --target ./agent-skills
 workflow-skills emit-context --agent opencode --out AGENTS.md
 ```
 
-See [docs/cli.md](docs/cli.md).
-See [docs/productionization-plan.md](docs/productionization-plan.md) for release gates and tarball validation.
+See [docs/cli.md](docs/cli.md) for the full command reference.
 
-## Evaluation
+## Verification
 
-The package includes an evaluation suite under `eval/`:
-
-- `smoke-prompts-only.md`: fresh-thread prompts without answer leakage
-- `smoke-answer-key.md`: evaluator-only expectations
-- `evil-metrics.md`: adversarial scoring
-- `adversarial-report.md`: latest review findings and current posture
+The repository includes adversarial checks so the skills are judged as process artifacts, not by vibes.
 
 Run:
 
 ```bash
-npm test
 npm run validate:tests
+npm test
+python3 eval/static_validate.py
 ```
+
+The evaluation suite includes:
+
+- [eval/smoke-prompts-only.md](eval/smoke-prompts-only.md): fresh-thread prompts without answer leakage
+- [eval/smoke-answer-key.md](eval/smoke-answer-key.md): evaluator-only expectations
+- [eval/evil-metrics.md](eval/evil-metrics.md): adversarial scoring metrics
+- [eval/adversarial-report.md](eval/adversarial-report.md): current findings and residual risks
 
 Promotion bar:
 
-- every skill validates
-- no prompt answer-key leakage
-- no automatic fails in live smoke tests
+- all skills validate
+- no answer-key leakage
+- no automatic fail in live smoke tests
 - relevant evil metrics score at least 2
-- average target is 2.6 or higher
+- average target score is 2.6 or higher
+- generated workflow docs can be used by a fresh agent after context loss
 
-## Documentation Artifacts
+See [docs/evaluation.md](docs/evaluation.md) and [docs/productionization-plan.md](docs/productionization-plan.md).
 
-`$workflow-docs` supports two lanes:
+## Repository Layout
 
-- Workflow control: `WORKFLOW.md`, `SOURCE-CORPUS.md`, `WORK-UNITS.md`, `DOSSIER.md`, `ACCEPTANCE-MATRIX.md`, `VERIFICATION-REPORT.md`, `REPAIR-TICKETS.md`, `DECISIONS.md`, `HANDOFF.md`, `OUTCOME.md`, `GOAL-STATE.md`.
-- Documentation production: `DOCUMENTATION-BRIEF.md`, `CONTENT-INVENTORY.md`, `OUTLINE.md`, `CONTENT-DRAFT.md`, `CLAIMS-REGISTER.md`, `STYLE-GUIDE.md`, `GLOSSARY.md`, `ASSET-REGISTER.md`, `REVIEW-PLAN.md`, `REVISION-QUEUE.md`, `PUBLISHING-CHECKLIST.md`, `PUBLICATION-LOG.md`, `MAINTENANCE-PLAN.md`.
+```text
+skills/      production skill folders
+adapters/    agent adapter metadata
+bin/         workflow-skills CLI
+docs/        user and release documentation
+eval/        adversarial prompts, answer keys, and validators
+test/        package smoke tests
+```
 
 ## Status
 
-This repository is ready for local package smoke testing and fresh-thread evaluation. Keep implicit invocation disabled until live routing tests prove the pack does not over-trigger.
+The package is ready for local installation, tarball testing, and fresh-thread evaluation. Keep implicit invocation disabled until routing tests prove the skills do not over-trigger.
