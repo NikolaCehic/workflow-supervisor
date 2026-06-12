@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workflow Docs"
+  short_description: "Generate reusable workflow Markdown artifacts"
+  default_prompt: "Use $workflow-docs to create or refresh Markdown artifacts that preserve workflow state."
+
+policy:
+  allow_implicit_invocation: false

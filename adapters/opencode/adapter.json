@@ -1,0 +1,8 @@
+{
+  "agent": "opencode",
+  "status": "portable",
+  "defaultTarget": "${OPENCODE_HOME:-~/.config/opencode}/skills",
+  "projectTarget": "<project>/.opencode/skills",
+  "metadata": "SKILL.md",
+  "fallback": "workflow-skills emit-context --agent opencode --out AGENTS.md"
+}

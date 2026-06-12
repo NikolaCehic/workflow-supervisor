@@ -1,0 +1,7 @@
+interface:
+  display_name: "Source Corpus"
+  short_description: "Rank and reconcile sources of truth"
+  default_prompt: "Use $source-corpus to map and reconcile the sources of truth for this task."
+
+policy:
+  allow_implicit_invocation: false

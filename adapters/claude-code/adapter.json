@@ -1,0 +1,7 @@
+{
+  "agent": "claude-code",
+  "status": "portable",
+  "defaultTarget": "${CLAUDE_HOME:-~/.claude}/skills",
+  "metadata": "SKILL.md",
+  "fallback": "workflow-skills emit-context --agent claude-code --out CLAUDE.md"
+}
