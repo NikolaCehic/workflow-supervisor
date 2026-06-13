@@ -2,6 +2,8 @@
 
 Portable workflow skills for supervising messy agent work.
 
+![Workflow Supervisor hero image showing source documents flowing into work units, verification checks, repair loops, and outcome state](assets/workflow-supervisor-hero.png)
+
 This repository contains an installable skill pack for Codex, Claude Code, OpenCode, HermesAgent, and other agents that can read Markdown instructions. It is built for work that is too broad, risky, ambiguous, or long-running to handle as one ordinary prompt.
 
 Use it when an agent needs to:
