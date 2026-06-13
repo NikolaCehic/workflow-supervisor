@@ -46,6 +46,17 @@ workflow-supervisor --+-- work-unit
 
 The goal is not bureaucracy. The goal is to stop agents from drifting, guessing, rubber-stamping their own work, or losing state after a long context window.
 
+## Execution Paths
+
+The supervisor chooses one of two paths before work starts:
+
+- `human_in_loop`: the agent produces an approval packet first, then waits for a human decision before implementation, worker thread creation, publication, direct push, or other irreversible action.
+- `autonomous_goal`: the agent can continue through planning, implementation, verification, repair, and final disposition only when the user or environment explicitly authorizes autonomous goal execution.
+
+Both paths use the same core controls: source grounding, bounded work units, dossiers, role separation, acceptance evidence, repair limits, stop gates, and final disposition choices. In Codex-style environments, the supervisor can bind the loop to an explicit goal, mirror state into workflow artifacts, and resume without losing the active objective.
+
+The pack is domain-neutral. A "surface" can be a repository path, document section, design, dataset, ticket, process, prompt, or other mutable artifact. When prerequisites are missing, the skills create a discovery or intake unit instead of inventing repo-only requirements.
+
 ## Quick Example
 
 Ask the agent to use the supervisor for work that needs a real loop:
@@ -99,6 +110,24 @@ Install into any custom directory:
 node ./bin/workflow-skills.mjs install --agent generic --target ./agent-skills
 ```
 
+Install only selected skills:
+
+```bash
+node ./bin/workflow-skills.mjs install --agent codex --skills workflow-supervisor,loop-policy,workflow-docs
+```
+
+Remove an install:
+
+```bash
+node ./bin/workflow-skills.mjs uninstall --agent codex --scope user
+```
+
+Emit a portable context file for agents that do not natively discover skill folders:
+
+```bash
+npx workflow-skill-pack emit-context --agent opencode --out AGENTS.md
+```
+
 Each install writes:
 
 - the selected skill folders
@@ -115,20 +144,20 @@ Each install writes:
 | HermesAgent | `${HERMESAGENT_HOME:-${HERMES_HOME:-~/.hermes}}/skills` | `<project>/.hermes/skills` |
 | Generic | custom `--target` | custom `--target` |
 
-See [docs/compatibility.md](docs/compatibility.md) for adapter notes.
+Use `emit-context` to create `AGENTS.md`, `CLAUDE.md`, `HERMES.md`, or another portable instruction file when an agent does not read `SKILL.md` folders directly. See [docs/compatibility.md](docs/compatibility.md) for adapter notes.
 
 ## Included Skills
 
 | Skill | What It Does |
 |---|---|
 | `$workflow-supervisor` | Coordinates the whole loop: source grounding, work units, autonomous or human-in-loop execution path, thread orchestration, dossiers, verification, repair, stop gates, goal state, final PR/push/local disposition, and outcome reporting. |
-| `$source-corpus` | Identifies and ranks sources of truth, then flags stale, missing, or contradictory evidence. |
+| `$source-corpus` | Identifies and ranks sources of truth, then flags stale, missing, contradictory, inaccessible, or non-blocking evidence gaps. |
 | `$work-unit` | Turns broad goals into bounded units with objective, dependencies, scope, done criteria, and sequencing. |
 | `$dossier-builder` | Creates a concrete handoff contract for one unit: sources, allowed surfaces, forbidden surfaces, checks, stop gates, and report shape. |
 | `$worker-roles` | Defines narrow role contracts for implementer, verifier, researcher, repair author, documenter, reviewer, and synthesizer. |
 | `$acceptance-matrix` | Converts goals into testable criteria with evidence requirements, adversarial checks, PASS/FAIL/BLOCKED states, and residual risk. |
-| `$loop-policy` | Controls sequential/parallel execution, retry limits, approvals, budgets, escalation, no-progress detection, and continuation rules. |
-| `$workflow-docs` | Generates durable Markdown workflow state and documentation-production artifacts. |
+| `$loop-policy` | Controls autonomous vs human-in-loop execution, sequential/parallel mode, retry limits, approvals, budgets, escalation, no-progress detection, and continuation rules. |
+| `$workflow-docs` | Generates the smallest useful set of durable workflow-state and documentation-production artifacts. |
 
 ## Documentation Artifacts
 
@@ -167,6 +196,8 @@ Documentation production:
 
 Markdown is the default, but the skills can also produce inline handoffs, ticket outlines, runbooks, spreadsheet-ready tables, design review notes, or other state that a human or agent can reuse.
 
+`$workflow-docs` is intentionally selective: it can scaffold, refresh, or preserve only the artifacts a workflow actually needs, including resume packs, verification reports, repair tickets, content briefs, claims registers, review plans, publishing checklists, and maintenance plans.
+
 ## CLI
 
 ```bash
@@ -176,6 +207,8 @@ workflow-skills doctor --agent codex
 workflow-skills install --agent codex --dry-run
 workflow-skills install --agent all --scope project --project .
 workflow-skills install --agent generic --target ./agent-skills
+workflow-skills install --agent codex --skills workflow-supervisor,loop-policy
+workflow-skills uninstall --agent codex --scope user
 workflow-skills emit-context --agent opencode --out AGENTS.md
 ```
 
