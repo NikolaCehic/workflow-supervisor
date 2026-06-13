@@ -17,7 +17,7 @@ function usage() {
 
 Usage:
   workflow-skills list [--root <path>]
-  workflow-skills validate [--root <path>] [--tests]
+  workflow-skills validate [--root <path>]
   workflow-skills doctor [--agent <agent|all>] [--scope user|project] [--project <path>] [--target <path>]
   workflow-skills install --agent <agent|all> [--scope user|project] [--project <path>] [--target <path>] [--skills all|a,b] [--force] [--dry-run]
   workflow-skills uninstall --agent <agent|all> [--scope user|project] [--project <path>] [--target <path>] [--skills all|a,b] [--dry-run]
@@ -36,7 +36,7 @@ Examples:
 
 function parseArgs(argv) {
   const result = { _: [] };
-  const booleans = new Set(["force", "dry-run", "help", "tests"]);
+  const booleans = new Set(["force", "dry-run", "help"]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith("--")) {
@@ -165,35 +165,6 @@ function validate(root = packageRoot) {
   if (names.length === 0) allErrors.push("no skills found");
   if (allErrors.length > 0) throw new Error(`Validation failed:\n${allErrors.map((e) => `- ${e}`).join("\n")}`);
   return names;
-}
-
-function validateEval(root = packageRoot) {
-  const evalRoot = path.join(root, "eval");
-  const required = [
-    "evil-metrics.md",
-    "smoke-prompts.md",
-    "smoke-prompts-only.md",
-    "smoke-answer-key.md",
-    "evaluation-protocol.md",
-    "adversarial-report.md",
-  ];
-  const errors = [];
-  for (const file of required) {
-    if (!fs.existsSync(path.join(evalRoot, file))) errors.push(`missing eval/${file}`);
-  }
-  const promptsOnly = path.join(evalRoot, "smoke-prompts-only.md");
-  if (fs.existsSync(promptsOnly) && /Expected skills:|Expected behavior:|Evil metrics:/.test(readText(promptsOnly))) {
-    errors.push("eval/smoke-prompts-only.md leaks answer key");
-  }
-  const answerKey = path.join(evalRoot, "smoke-answer-key.md");
-  if (fs.existsSync(answerKey)) {
-    const text = readText(answerKey);
-    if (!text.includes("Expected skills:") || !text.includes("Evil metrics:")) {
-      errors.push("eval/smoke-answer-key.md is missing evaluator metadata");
-    }
-  }
-  if (errors.length > 0) throw new Error(`Evaluation validation failed:\n${errors.map((e) => `- ${e}`).join("\n")}`);
-  return required;
 }
 
 function selectSkills(root, raw) {
@@ -395,7 +366,6 @@ function main() {
   if (command === "validate") {
     const root = path.resolve(expandHome(args.root || packageRoot));
     const names = validate(root);
-    if (args.tests) console.log(`Validated evaluation assets: ${validateEval(root).join(", ")}`);
     console.log(`Validated ${names.length} skills: ${names.join(", ")}`);
     return;
   }

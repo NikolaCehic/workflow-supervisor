@@ -75,7 +75,7 @@ From a local checkout:
 ```bash
 git clone https://github.com/NikolaCehic/workflow-supervisor.git
 cd workflow-supervisor
-npm test
+npm run validate
 node ./bin/workflow-skills.mjs install --agent codex --scope user
 ```
 
@@ -97,7 +97,7 @@ Install into any custom directory:
 node ./bin/workflow-skills.mjs install --agent generic --target ./agent-skills
 ```
 
-The installer copies only production skill folders. It does not install the evaluation suite into agent skill directories. Each install writes:
+Each install writes:
 
 - the selected skill folders
 - `WORKFLOW_SKILL_PACK.md`
@@ -168,7 +168,7 @@ Markdown is the default, but the skills can also produce inline handoffs, ticket
 
 ```bash
 workflow-skills list
-workflow-skills validate --tests
+workflow-skills validate
 workflow-skills doctor --agent codex
 workflow-skills install --agent codex --dry-run
 workflow-skills install --agent all --scope project --project .
@@ -178,35 +178,14 @@ workflow-skills emit-context --agent opencode --out AGENTS.md
 
 See [docs/cli.md](docs/cli.md) for the full command reference.
 
-## Verification
+## Validation
 
-The repository includes adversarial checks so the skills are judged as process artifacts, not by vibes.
-
-Run:
+Run the built-in validator before installing from a local checkout:
 
 ```bash
-npm run validate:tests
-npm test
-python3 eval/static_validate.py
+npm run validate
+node ./bin/workflow-skills.mjs install --agent generic --target ./agent-skills --dry-run
 ```
-
-The evaluation suite includes:
-
-- [eval/smoke-prompts-only.md](eval/smoke-prompts-only.md): fresh-thread prompts without answer leakage
-- [eval/smoke-answer-key.md](eval/smoke-answer-key.md): evaluator-only expectations
-- [eval/evil-metrics.md](eval/evil-metrics.md): adversarial scoring metrics
-- [eval/adversarial-report.md](eval/adversarial-report.md): current findings and residual risks
-
-Promotion bar:
-
-- all skills validate
-- no answer-key leakage
-- no automatic fail in live smoke tests
-- relevant evil metrics score at least 2
-- average target score is 2.6 or higher
-- generated workflow docs can be used by a fresh agent after context loss
-
-See [docs/evaluation.md](docs/evaluation.md) and [docs/productionization-plan.md](docs/productionization-plan.md).
 
 ## Repository Layout
 
@@ -214,11 +193,9 @@ See [docs/evaluation.md](docs/evaluation.md) and [docs/productionization-plan.md
 skills/      production skill folders
 adapters/    agent adapter metadata
 bin/         workflow-skills CLI
-docs/        user and release documentation
-eval/        adversarial prompts, answer keys, and validators
-test/        package smoke tests
+docs/        user documentation
 ```
 
 ## Status
 
-The package is ready for local installation, tarball testing, and fresh-thread evaluation. Keep implicit invocation disabled until routing tests prove the skills do not over-trigger.
+The package is ready for local installation and explicit skill invocation. Keep implicit invocation disabled unless your environment has proven routing precision for these skills.

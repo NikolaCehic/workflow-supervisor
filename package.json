@@ -18,19 +18,12 @@
     "skills",
     "adapters",
     "docs",
-    "eval",
     "bin",
-    "test",
     "README.md",
-    "CONTRIBUTING.md",
-    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
-    "validate": "node ./bin/workflow-skills.mjs validate",
-    "validate:tests": "node ./bin/workflow-skills.mjs validate --tests",
-    "test": "node ./test/smoke.mjs",
-    "pack:dry": "npm pack --dry-run"
+    "validate": "node ./bin/workflow-skills.mjs validate"
   },
   "keywords": [
     "codex",

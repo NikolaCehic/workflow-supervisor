@@ -28,10 +28,7 @@ Validate skill folder structure, `SKILL.md` frontmatter, required metadata, and 
 
 ```bash
 workflow-skills validate
-workflow-skills validate --tests
 ```
-
-`--tests` also validates packaged evaluation assets.
 
 ### `doctor`
 
@@ -66,7 +63,7 @@ Options:
 --skills all|a,b      Install all skills or a comma-separated subset.
 --force               Replace existing installed skill folders.
 --dry-run             Validate and print intended action without writing.
---root <path>         Use another package root, mostly for tests.
+--root <path>         Use another package root.
 ```
 
 Default targets:
