@@ -1,11 +1,13 @@
 ---
 name: worker-roles
-description: Define narrow role contracts only when creating explicit worker prompts or separating responsibilities across multiple agents, threads, reviewers, or formal handoffs. Use to prevent role bleed such as verifiers editing implementation, implementers self-approving, or repair authors inventing scope. Do not use for ordinary single-agent reviewing, editing, researching, documenting, or implementing in the current thread.
+description: Define narrow role contracts only when creating explicit worker prompts or separating responsibilities across multiple agents, threads, reviewers, or formal handoffs. Use to prevent role bleed such as verifiers editing implementation, implementers self-approving, repair authors inventing scope, or documenters starting before evidence exists. Do not use for ordinary single-agent reviewing, editing, researching, documenting, or implementing in the current thread.
 ---
 
 # Worker Roles
 
 Use this skill to make delegation safe. Each worker prompt should include one role, one objective, allowed behavior, forbidden behavior, sources to read, and a report schema.
+
+No worker thread should start before the supervisor path gate is satisfied. In `human_in_loop`, that means human plan approval. In `autonomous_goal`, that means explicit autonomous authorization plus a recorded execution plan. Role-specific start conditions below are additional gates after the path gate.
 
 ## Domain Neutrality
 
@@ -21,12 +23,14 @@ When separate agents, threads, or reviewers are unavailable, collapse roles into
 
 - May edit only allowed surfaces.
 - Must not stage, commit, publish, approve, or edit workflow records unless assigned.
+- Starts only after the path gate is satisfied and the supervisor sends the implementation dossier.
 - Must report files or artifacts changed, decisions followed, checks run or evidence produced, skipped checks, assumptions, and acceptance mapping.
 
 ### Verifier
 
 - Must not edit files except unavoidable command side effects.
 - Must inspect sources and diff/artifacts independently.
+- Starts only after the relevant implementer or repair report is available.
 - Must map every acceptance item to evidence.
 - Must return PASS, FAIL, or BLOCKED.
 - Must list repair intent only, not code changes.
@@ -41,12 +45,14 @@ When separate agents, threads, or reviewers are unavailable, collapse roles into
 
 - Converts verifier findings into actionable tickets.
 - Must not invent new scope.
+- Starts only after a verifier returns FAIL or BLOCKED with actionable findings.
 - Must include severity, affected surfaces or artifacts, problem, required repair, required checks or evidence, and acceptance criteria.
 - Must link each ticket to a verifier finding ID, acceptance row, or exact evidence gap.
 
 ### Documenter
 
 - Creates or updates workflow artifacts from evidence.
+- Starts after the path gate for planning docs, or after implementation and verification evidence exists for outcome docs.
 - Must preserve unknowns and residual risks.
 - Must not turn unresolved questions into facts.
 
@@ -91,6 +97,7 @@ When separate agents, threads, or reviewers are unavailable, collapse roles into
 
 Include:
 
+- thread name
 - role name
 - work unit and objective
 - must-read sources
@@ -98,3 +105,11 @@ Include:
 - acceptance criteria
 - stop gates
 - exact report schema
+
+## Thread Interaction Rules
+
+- Workers should acknowledge the handoff before acting.
+- Workers should ask the supervisor for clarification when a blocker affects scope, sources, surfaces, checks, or acceptance.
+- Workers should not message other worker threads directly unless the supervisor allows it in the loop policy.
+- Workers should send one terminal report with PASS, FAIL, BLOCKED, or PARTIAL status using the assigned schema.
+- Verifier and repair threads should cite acceptance row IDs and prior report IDs so the supervisor can route the loop.

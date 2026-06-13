@@ -16,6 +16,7 @@ Work units can be bounded by code package, document section, source set, stakeho
 A good work unit has:
 
 - one objective
+- a stable unit ID suitable for dossier and thread naming
 - named dependencies
 - explicit in-scope and out-of-scope surfaces
 - known sources or source gaps
@@ -48,6 +49,7 @@ For over-broad one-pass requests, produce a sequencing recommendation and invoke
 parent_objective:
 units:
   - id:
+    thread_slug:
     title:
     objective:
     in_scope:

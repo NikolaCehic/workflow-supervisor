@@ -1,7 +1,7 @@
 interface:
   display_name: "Workflow Supervisor"
-  short_description: "Coordinate grounded agent workflow loops"
-  default_prompt: "Use $workflow-supervisor to coordinate this open-ended workflow from grounded sources to verified outcome."
+  short_description: "Run autonomous or human-gated workflows"
+  default_prompt: "Use $workflow-supervisor to plan this workflow, choose autonomous or human-in-loop execution, then coordinate named worker threads through verification and final disposition."
 
 policy:
   allow_implicit_invocation: false

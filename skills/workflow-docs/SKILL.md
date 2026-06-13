@@ -31,6 +31,7 @@ For documentation work, start with `DOCUMENTATION-BRIEF.md` unless the user prov
 - Refresh existing artifacts while preserving unresolved questions and decisions.
 - Create a resume pack for another thread or future session.
 - Convert verification and repair results into durable reports.
+- Preserve thread plans, worker handoffs, terminal reports, and final disposition decisions when supervised work spans threads.
 
 ## Rules
 
@@ -54,6 +55,7 @@ For documentation work, start with `DOCUMENTATION-BRIEF.md` unless the user prov
 - `SOURCE-CORPUS.md`: source map, authority ranking, contradictions, gaps.
 - `WORK-UNITS.md`: decomposition and sequencing.
 - `DOSSIER.md`: handoff contract for one unit.
+- `THREAD-MAP.md`: thread names, roles, dossiers, dependencies, start conditions, report status, and supervisor checkpoints.
 - `ACCEPTANCE-MATRIX.md`: verifiable done criteria.
 - `VERIFICATION-REPORT.md`: evidence-backed PASS/FAIL/BLOCKED report.
 - `REPAIR-TICKETS.md`: actionable repair tasks from verifier findings.

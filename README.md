@@ -9,6 +9,8 @@ Use it when an agent needs to:
 - ground work in source material before acting
 - split a fuzzy goal into bounded work units
 - create concrete handoffs between agents or threads
+- choose between autonomous goal execution and human-in-the-loop execution
+- fan out path-gated dossiers into named worker threads
 - separate implementation from verification
 - turn acceptance criteria into evidence-backed checks
 - control repair loops, retries, budgets, and stop gates
@@ -21,7 +23,7 @@ Do not use it for tiny edits, one-off commands, ordinary README wording, or a ta
 The pack treats open-ended work as a supervised loop:
 
 ```text
-sources -> work units -> dossier -> execution -> verification -> repair -> outcome
+sources -> work units -> execution path -> named threads -> verification -> repair -> disposition
 ```
 
 `$workflow-supervisor` is the spine. The other skills are phase tools the supervisor can call when the workflow needs more structure.
@@ -51,7 +53,7 @@ Ask the agent to use the supervisor for work that needs a real loop:
 ```text
 Use $workflow-supervisor as an agent loop goal.
 
-Migrate this repo's docs to the new API shape. Inspect the source first, split the work into units, create acceptance criteria, verify independently, repair failures, and leave a handoff another agent can resume from.
+Migrate this repo's docs to the new API shape. Inspect the source first, split the work into units, create acceptance criteria, choose the execution path, propose named worker threads, verify independently, repair failures, and leave a handoff another agent can resume from.
 ```
 
 For a narrower phase, invoke the specific skill:
@@ -119,7 +121,7 @@ See [docs/compatibility.md](docs/compatibility.md) for adapter notes.
 
 | Skill | What It Does |
 |---|---|
-| `$workflow-supervisor` | Coordinates the whole loop: source grounding, work units, dossiers, verification, repair, stop gates, goal state, and outcome reporting. |
+| `$workflow-supervisor` | Coordinates the whole loop: source grounding, work units, autonomous or human-in-loop execution path, thread orchestration, dossiers, verification, repair, stop gates, goal state, final PR/push/local disposition, and outcome reporting. |
 | `$source-corpus` | Identifies and ranks sources of truth, then flags stale, missing, or contradictory evidence. |
 | `$work-unit` | Turns broad goals into bounded units with objective, dependencies, scope, done criteria, and sequencing. |
 | `$dossier-builder` | Creates a concrete handoff contract for one unit: sources, allowed surfaces, forbidden surfaces, checks, stop gates, and report shape. |
@@ -138,6 +140,7 @@ Workflow state:
 - `SOURCE-CORPUS.md`
 - `WORK-UNITS.md`
 - `DOSSIER.md`
+- `THREAD-MAP.md`
 - `ACCEPTANCE-MATRIX.md`
 - `VERIFICATION-REPORT.md`
 - `REPAIR-TICKETS.md`

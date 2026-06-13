@@ -13,6 +13,10 @@ Use these for supervised workflow state. Do not use them for ordinary documentat
 
 ## Current Status
 
+## Execution Path
+
+## Final Disposition Policy
+
 ## Constraints
 
 ## Non-Goals
@@ -62,8 +66,8 @@ Use these for supervised workflow state. Do not use them for ordinary documentat
 ```md
 # Work Units
 
-| ID | Title | Objective | Dependencies | Status | Verification |
-|---|---|---|---|---|---|
+| ID | Thread Slug | Title | Objective | Dependencies | Status | Verification |
+|---|---|---|---|---|---|---|
 
 ## Sequencing
 
@@ -76,6 +80,14 @@ Use these for supervised workflow state. Do not use them for ordinary documentat
 
 ```md
 # Dossier
+
+## Dossier ID
+
+## Thread Name
+
+## Thread Role
+
+## Start Condition
 
 ## Work Unit
 
@@ -103,11 +115,30 @@ Use these for supervised workflow state. Do not use them for ordinary documentat
 
 ## Owner Or Contributor Role
 
+## Handoff Message
+
+## Supervisor Checkpoints
+
 ## Report Schema
 
 ## Stop Gates
 
 ## Open Questions
+```
+
+## THREAD-MAP.md
+
+```md
+# Thread Map
+
+| Thread Name | Role | Work Unit | Dossier | Start Condition | Dependencies | Status | Last Supervisor Message | Terminal Report |
+|---|---|---|---|---|---|---|---|---|
+
+## Supervisor Checkpoints
+
+## Blocked Threads
+
+## Closed Threads
 ```
 
 ## ACCEPTANCE-MATRIX.md
@@ -130,6 +161,10 @@ Use these for supervised workflow state. Do not use them for ordinary documentat
 
 Status: PASS | FAIL | BLOCKED | NEEDS REVISION | APPROVED WITH CAVEATS | READY TO PUBLISH | SME REVIEW NEEDED | LEGAL REVIEW NEEDED | STALE
 
+Verified Work Unit:
+
+Verified Thread:
+
 ## Sources Inspected
 
 ## Materials Inspected
@@ -151,6 +186,8 @@ Status: PASS | FAIL | BLOCKED | NEEDS REVISION | APPROVED WITH CAVEATS | READY T
 ## Residual Risks
 
 ## Repair Or Revision Recommendations
+
+## Re-Verification Required
 ```
 
 ## REPAIR-TICKETS.md
@@ -213,9 +250,17 @@ Acceptance Criteria:
 
 Status: PASS | FAIL | BLOCKED | PARTIAL
 
+Final Disposition: PR | PUSH_MAIN | KEEP_LOCAL | UNDECIDED
+
+Execution Path:
+
+Final Disposition Policy:
+
 ## Objective
 
 ## Work Completed
+
+## Worker Threads
 
 ## Verification Evidence
 

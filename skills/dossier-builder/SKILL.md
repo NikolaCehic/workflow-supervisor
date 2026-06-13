@@ -1,6 +1,6 @@
 ---
 name: dossier-builder
-description: Create a concrete handoff contract only when one already-bounded work unit needs a dossier for another agent, thread, future session, formal worker prompt, or durable handoff. Use when objective, sources, boundaries, acceptance rows, checks or evidence, stop gates, and report schemas must be captured before delegation. Do not use to plan work Codex will perform directly in the current turn, for unbounded work, or for ordinary same-thread implementation.
+description: Create a concrete handoff contract only when one already-bounded work unit needs a dossier for another agent, thread, future session, formal worker prompt, or durable handoff. Use when objective, sources, boundaries, acceptance rows, checks or evidence, stop gates, thread naming, start conditions, and report schemas must be captured before delegation. Do not use to plan work Codex will perform directly in the current turn, for unbounded work, or for ordinary same-thread implementation.
 ---
 
 # Dossier Builder
@@ -35,6 +35,10 @@ Use a provisional dossier for low-risk drafts, plans, outlines, rubrics, and opt
 ```yaml
 workflow:
 work_unit:
+dossier_id:
+thread_name:
+thread_role:
+start_condition:
 title:
 objective:
 non_goals:
@@ -53,6 +57,8 @@ acceptance_matrix:
 adversarial_checks:
 required_commands_or_evidence:
 worker_role:
+handoff_message:
+supervisor_checkpoints:
 completion_report_schema:
 verification_report_schema:
 stop_gates:
@@ -70,6 +76,10 @@ open_questions:
 - Require workers to report skipped checks and assumptions.
 - For non-code work, use evidence such as citations, before/after excerpts, review rubrics, examples, artifact diffs, or explicit user decisions instead of commands.
 - Require repair tickets to cite the verification finding or acceptance row they repair.
+- Include a deterministic `thread_name` when delegation is planned. Use `wf/<workflow-slug>/<unit-id>-<role>-<dossier-slug>`.
+- Include `start_condition`, such as `after path gate`, `after human plan approval`, `after autonomous execution plan`, `after implementer report`, `after verification FAIL`, or `after repairs complete`.
+- Include a ready-to-send `handoff_message` that contains only the worker's role, dossier, sources, acceptance rows, stop gates, and report schema.
+- Include supervisor checkpoints for kickoff acknowledgement, blocker questions, terminal report, and closeout.
 
 ## Failure Modes
 

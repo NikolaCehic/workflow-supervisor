@@ -52,6 +52,8 @@ Consider:
 
 ```yaml
 status: PASS|FAIL|BLOCKED
+verified_work_unit:
+verified_thread:
 matrix:
   - id:
     requirement:
@@ -63,9 +65,12 @@ findings:
 residual_risks:
 skipped_checks:
 repair_recommendations:
+reverify_required: true|false
 ```
 
 Repair recommendations must link to the failed or blocked matrix row ID. Do not recommend repairs for requirements that were not in scope unless the verifier first records a separate scope gap.
+
+After repairs, verification must rerun against the affected rows and any regression rows. The supervisor may mark the workflow green only when material rows are PASS or explicitly waived with evidence.
 
 ## Rubber-Stamp Guard
 

@@ -1,6 +1,6 @@
 ---
 name: loop-policy
-description: Define execution policy only for supervised, multi-agent, long-running, resumable, approval-gated, or repair-loop workflows. Use for sequential or parallel execution, retry and repair limits, budgets, escalation, Codex goal binding, blocking rules, continuation criteria, and no-progress detection. Do not use for one failing command, normal retrying, routine user approval, or a one-shot task with obvious completion.
+description: Define execution policy only for supervised, multi-agent, multi-thread, long-running, resumable, autonomous-goal, human-in-loop, approval-gated, or repair-loop workflows. Use for execution path selection, sequential or parallel execution, thread orchestration, retry and repair limits, budgets, escalation, Codex goal binding, blocking rules, continuation criteria, and no-progress detection. Do not use for one failing command, normal retrying, routine user approval, or a one-shot task with obvious completion.
 ---
 
 # Loop Policy
@@ -16,6 +16,7 @@ The policy must not require a repository, test suite, issue tracker, or document
 For loop-oriented supervisor work, define how the workflow uses Codex goals:
 
 - goal_start: create, reuse, skip, or ask
+- execution_path: `autonomous_goal` or `human_in_loop`
 - codex_goal_tool_actions: `get_goal` at start/resume, `create_goal` at most once when explicitly allowed, `update_goal` only for terminal complete or blocked
 - goal_state_mirror_cadence: each work unit, each verification result, each repair loop, and final outcome
 - goal_completion_rule: evidence required before completion
@@ -26,8 +27,10 @@ Do not create goals for small direct tasks. A goal is the state container for op
 
 ## Policy Dimensions
 
+- Execution path: autonomous_goal or human_in_loop.
 - Mode: sequential, parallel, staged parallel, or discovery-first.
-- Approval: none, before implementation, before publication, before irreversible action, or before each unit.
+- Approval: none, before thread creation, before implementation, before verification, before repair, before publication, before irreversible action, before each unit, or path-gated.
+- Thread orchestration: naming scheme, spawn timing, supervisor checkpoint cadence, terminal report collection, and fallback when thread tools are unavailable.
 - Repair limit: maximum repair loops per unit.
 - Budget: time, token, command, cost, or file-change limits.
 - Escalation: when to ask the user, spawn a specialist, or stop.
@@ -41,9 +44,14 @@ Use this default unless the task says otherwise:
 
 ```yaml
 mode: sequential
-approval_gate: before irreversible or user-visible publication
+execution_path: human_in_loop unless explicitly authorized autonomous_goal
+approval_gate: path-gated; human approval for human_in_loop, autonomous authorization for autonomous_goal, explicit approval for irreversible or user-visible publication unless preauthorized
 repair_limit_per_unit: 2
 parallel_allowed_when: units do not share mutable surfaces
+thread_spawn_rule: after path gate and concrete dossier
+thread_name_template: wf/<workflow-slug>/<unit-id>-<role>-<dossier-slug>
+supervisor_checkpoint_cadence: after handoff acknowledgement, terminal report, repair ticket creation, re-verification, and final disposition
+final_disposition_policy: ask_human unless preauthorized; autonomous defaults to keep_local_when_green
 workflow_unit_blocked_after: first material blocker may stop the unit while the Codex goal remains active
 codex_goal_blocked_after: same material blocker across 3 consecutive goal turns and no meaningful progress
 completion_requires: acceptance evidence plus residual risk report
@@ -71,8 +79,10 @@ Do not run units in parallel when they edit the same files, documents, datasets,
 
 ```yaml
 workflow:
+execution_path:
 mode:
 approval_gates:
+thread_policy:
 repair_limit:
 parallel_rules:
 budgets:
@@ -81,4 +91,5 @@ stop_gates:
 completion_rule:
 resume_artifacts:
 goal_policy:
+final_disposition_policy:
 ```
