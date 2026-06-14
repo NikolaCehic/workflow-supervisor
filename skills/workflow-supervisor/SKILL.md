@@ -36,6 +36,7 @@ If the environment has no goal tool or goal creation is not permitted, state the
 ## Operating Contract
 
 - Ground the workflow in sources before creating work units.
+- Treat skill use as instruction loading in the current agent, not as thread, subagent, goal, branch, commit, PR, publication, or other side-effect creation.
 - Classify the workflow as `autonomous_goal` or `human_in_loop` before spawning threads or beginning implementation.
 - Always produce a plan. In `human_in_loop`, make it an approval packet and stop for approval. In `autonomous_goal`, make it an execution plan and continue only when autonomy is explicitly authorized.
 - Do not begin implementation until the path gate is satisfied, at least one concrete dossier exists, and no stop gate applies.
@@ -47,6 +48,19 @@ If the environment has no goal tool or goal creation is not permitted, state the
 - Stop instead of improvising when sources are missing, contradictory, materially stale, or too vague to produce acceptance criteria.
 - Keep provenance optional; require enough outcome detail for another agent to resume.
 - Treat companion skills as optional phase tools, not an automatic cascade. Use the smallest set needed for the current risk.
+
+## Skills, Threads, And Subagents
+
+Using this skill does not spawn a thread or subagent. It coordinates the current agent until a separate execution mechanism is explicitly available and authorized.
+
+Treat these as distinct mechanisms:
+
+- Skill: reusable instructions loaded into the current agent.
+- Worker thread: a separate environment-managed conversation or task created with thread tools when allowed.
+- Subagent: a separate worker execution mechanism when the environment exposes one.
+- Handoff prompt: a ready-to-send worker brief used when thread or subagent tools are unavailable or not approved.
+
+Start worker threads or subagents only after the path gate is satisfied, a concrete dossier exists, the loop policy authorizes delegation, and the environment allows the tool. If environment rules require explicit user approval for user-visible thread creation, obtain it before creating threads. Otherwise, output scoped handoff prompts and mark execution as `thread_unavailable` or `delegation_unavailable`.
 
 ## Supervisor Loop
 

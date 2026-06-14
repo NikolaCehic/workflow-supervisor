@@ -59,6 +59,14 @@ Both paths use the same core controls: source grounding, bounded work units, dos
 
 The pack is domain-neutral. A "surface" can be a repository path, document section, design, dataset, ticket, process, prompt, or other mutable artifact. When prerequisites are missing, the skills create a discovery or intake unit instead of inventing repo-only requirements.
 
+## Skills, Threads, And Subagents
+
+Using a skill loads instructions into the current agent. It does not automatically create a new thread, subagent, goal, branch, commit, PR, publication, or other side effect.
+
+Worker threads or subagents are separate execution mechanisms. `$workflow-supervisor` may plan them, but creation happens only after the selected execution path is authorized, a concrete dossier exists, the environment exposes the needed tool, and no stop gate applies. If thread or subagent tools are unavailable, the supervisor emits ready-to-send handoff prompts or workflow docs instead.
+
+In Codex-style environments, user-visible thread creation may require an explicit user request or approval even when the supervisor has prepared a thread plan. Treat same-thread verification as a self-check, not independent verification.
+
 ## Quick Example
 
 Ask the agent to use the supervisor for work that needs a real loop:
@@ -124,10 +132,10 @@ Remove an install:
 node ./bin/workflow-skills.mjs uninstall --agent codex --scope user
 ```
 
-Emit a portable context file for agents that do not natively discover skill folders:
+Emit a portable context file for agents that do not natively discover skill folders. This embeds the selected `SKILL.md` files and bundled Markdown references:
 
 ```bash
-npx workflow-skill-pack emit-context --agent opencode --out AGENTS.md
+npx workflow-skill-pack emit-context --agent opencode --skills workflow-supervisor,workflow-docs --out AGENTS.md
 ```
 
 Each install writes:
@@ -211,7 +219,7 @@ workflow-skills install --agent all --scope project --project .
 workflow-skills install --agent generic --target ./agent-skills
 workflow-skills install --agent codex --skills workflow-supervisor,loop-policy
 workflow-skills uninstall --agent codex --scope user
-workflow-skills emit-context --agent opencode --out AGENTS.md
+workflow-skills emit-context --agent opencode --skills workflow-supervisor,workflow-docs --out AGENTS.md
 ```
 
 See [docs/cli.md](docs/cli.md) for the full command reference.

@@ -21,7 +21,7 @@ Usage:
   workflow-skills doctor [--agent <agent|all>] [--scope user|project] [--project <path>] [--target <path>]
   workflow-skills install --agent <agent|all> [--scope user|project] [--project <path>] [--target <path>] [--skills all|a,b] [--force] [--dry-run]
   workflow-skills uninstall --agent <agent|all> [--scope user|project] [--project <path>] [--target <path>] [--skills all|a,b] [--dry-run]
-  workflow-skills emit-context --agent <agent> [--scope user|project] [--project <path>] [--target <path>] [--out <path>]
+  workflow-skills emit-context --agent <agent> [--scope user|project] [--project <path>] [--target <path>] [--skills all|a,b] [--out <path>] [--root <path>]
 
 Agents:
   codex, claude-code, opencode, hermesagent, generic, all
@@ -30,7 +30,7 @@ Examples:
   npx workflow-skill-pack install --agent codex --scope user
   npx workflow-skill-pack install --agent all --scope project --project .
   npx workflow-skill-pack install --agent generic --target ./agent-skills
-  npx workflow-skill-pack emit-context --agent opencode --out AGENTS.md
+  npx workflow-skill-pack emit-context --agent opencode --skills workflow-supervisor,workflow-docs --out AGENTS.md
 `;
 }
 
@@ -199,6 +199,26 @@ function hashDir(dir) {
   return hash.digest("hex");
 }
 
+const SKILL_SUMMARIES = {
+  "workflow-supervisor": "coordinate open-ended agent loops and bind Codex goals when appropriate",
+  "source-corpus": "rank and reconcile sources when source authority affects safe next action",
+  "work-unit": "decompose broad objectives into bounded units",
+  "dossier-builder": "create a handoff contract for one already-bounded work unit",
+  "worker-roles": "separate implementer, verifier, repair, documentation, reviewer, and solo-mode responsibilities",
+  "acceptance-matrix": "create formal evidence-mapped acceptance criteria",
+  "loop-policy": "define retries, parallel safety, approval gates, and goal binding policy",
+  "workflow-docs": "create durable workflow-state or documentation-production artifacts",
+};
+
+function skillSummary(name) {
+  return SKILL_SUMMARIES[name] || "use the bundled SKILL.md instructions";
+}
+
+function markdownResourceFiles(skillDir) {
+  const referencesDir = path.join(skillDir, "references");
+  return walkFiles(referencesDir).filter((file) => file.endsWith(".md"));
+}
+
 function copyDir(src, dest, { force = false, dryRun = false } = {}) {
   if (fs.existsSync(dest)) {
     if (!force) throw new Error(`Destination exists: ${dest}. Use --force to overwrite.`);
@@ -223,8 +243,9 @@ function resolveTarget(args, agent) {
   return target;
 }
 
-function contextFor(agent, target) {
+function contextFor(agent, target, names = listSkills(packageRoot)) {
   const title = agent === "generic" ? "Workflow Skill Pack" : `Workflow Skill Pack for ${agent}`;
+  const skillLines = names.map((name) => `- \`$${name}\`: ${skillSummary(name)}.`);
   return `# ${title}
 
 Installed skills:
@@ -233,17 +254,46 @@ Installed skills:
 
 Use these skills explicitly for supervised, long-running, or handoff-heavy workflows:
 
-- \`$workflow-supervisor\`: coordinate open-ended agent loops and bind Codex goals when appropriate.
-- \`$source-corpus\`: rank and reconcile sources when source authority affects safe next action.
-- \`$work-unit\`: decompose broad objectives into bounded units.
-- \`$dossier-builder\`: create a handoff contract for one already-bounded work unit.
-- \`$worker-roles\`: separate implementer, verifier, repair, documentation, reviewer, and solo-mode responsibilities.
-- \`$acceptance-matrix\`: create formal evidence-mapped acceptance criteria.
-- \`$loop-policy\`: define retries, parallel safety, approval gates, and goal binding policy.
-- \`$workflow-docs\`: create durable workflow-state or documentation-production artifacts.
+${skillLines.join("\n")}
 
 Do not use this pack for tiny direct tasks, ordinary README edits, one-off tests, or routine review unless a supervised workflow or durable handoff is explicitly needed.
 `;
+}
+
+function portableContextFor(root, agent, target, names) {
+  const title = agent === "generic" ? "Workflow Skill Pack Portable Context" : `Workflow Skill Pack Portable Context for ${agent}`;
+  const sections = [
+    `# ${title}`,
+    "",
+    "This file embeds the selected Workflow Supervisor skills for agents that cannot discover `SKILL.md` folders directly.",
+    "",
+    "Use these skills explicitly for supervised, long-running, or handoff-heavy workflows. Loading or reading a skill does not by itself create a new thread, subagent, goal, commit, PR, publication, or other side effect; those actions require the governing environment tools and the gates described in the relevant skill.",
+    "",
+    `Expected skill directory: \`${target || "<custom skill directory>"}\``,
+    "",
+    "## Included Skills",
+    "",
+    ...names.map((name) => `- \`$${name}\`: ${skillSummary(name)}.`),
+    "",
+    "Do not use this pack for tiny direct tasks, ordinary README edits, one-off tests, or routine review unless a supervised workflow or durable handoff is explicitly needed.",
+    "",
+  ];
+
+  for (const name of names) {
+    const skillDir = path.join(skillsRoot(root), name);
+    const skillFile = path.join(skillDir, "SKILL.md");
+    sections.push(`## Skill: $${name}`, "");
+    sections.push(`Source: \`skills/${name}/SKILL.md\``, "");
+    sections.push(readText(skillFile).trim(), "");
+
+    for (const resourceFile of markdownResourceFiles(skillDir)) {
+      const relative = path.relative(skillDir, resourceFile);
+      sections.push(`### Bundled Reference: $${name}/${relative}`, "");
+      sections.push(readText(resourceFile).trim(), "");
+    }
+  }
+
+  return `${sections.join("\n")}\n`;
 }
 
 function writeManifest(target, data, dryRun) {
@@ -267,7 +317,7 @@ function installOne(args, agent) {
     installed.push({ name, checksum: hashDir(src) });
   }
 
-  if (!dryRun) fs.writeFileSync(path.join(target, "WORKFLOW_SKILL_PACK.md"), contextFor(agent, target));
+  if (!dryRun) fs.writeFileSync(path.join(target, "WORKFLOW_SKILL_PACK.md"), contextFor(agent, target, names));
   writeManifest(
     target,
     {
@@ -313,8 +363,11 @@ function uninstall(args) {
 function emitContext(args) {
   const agent = args.agent || "generic";
   if (!AGENTS.has(agent)) throw new Error(`Unsupported agent: ${agent}`);
+  const root = path.resolve(expandHome(args.root || packageRoot));
+  validate(root);
+  const names = selectSkills(root, args.skills || "all");
   const target = args.target ? path.resolve(expandHome(args.target)) : defaultTarget(agent, { scope: args.scope || "user", project: args.project || process.cwd() });
-  const text = contextFor(agent, target);
+  const text = portableContextFor(root, agent, target, names);
   if (args.out) {
     const out = path.resolve(expandHome(args.out));
     fs.mkdirSync(path.dirname(out), { recursive: true });

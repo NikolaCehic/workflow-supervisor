@@ -2,7 +2,7 @@
 
 ## `workflow-supervisor`
 
-Coordinate explicit supervised or agent-loop workflows. It plans first, selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named worker threads from dossiers when the environment supports threads. It binds Codex goals only when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
+Coordinate explicit supervised or agent-loop workflows. It plans first, selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named worker threads or subagents from dossiers when the environment supports and authorizes delegation. Loading the skill itself does not spawn workers. It binds Codex goals only when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
 
 ## `source-corpus`
 
@@ -26,7 +26,7 @@ Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguo
 
 ## `loop-policy`
 
-Define execution path, execution mode, thread orchestration, approval gates, repair limits, parallel safety, no-progress rules, and Codex goal tool policy.
+Define execution path, execution mode, thread or subagent orchestration, approval gates, repair limits, parallel safety, no-progress rules, and Codex goal tool policy.
 
 ## `workflow-docs`
 

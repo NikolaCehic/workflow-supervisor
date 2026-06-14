@@ -93,11 +93,23 @@ workflow-skills uninstall --agent generic --target ./agent-skills
 
 ### `emit-context`
 
-Create a portable instruction file for agents that do not natively discover `SKILL.md` folders.
+Create a portable instruction file for agents that do not natively discover `SKILL.md` folders. The output embeds the selected `SKILL.md` files and bundled Markdown references, so the receiving agent can use the skills without separately reading the skill directory.
 
 ```bash
 workflow-skills emit-context --agent generic --target ./agent-skills --out AGENTS.md
-workflow-skills emit-context --agent opencode --out AGENTS.md
+workflow-skills emit-context --agent opencode --skills workflow-supervisor,workflow-docs --out AGENTS.md
+```
+
+Options:
+
+```text
+--agent codex|claude-code|opencode|hermesagent|generic
+--scope user|project
+--project <path>
+--target <path>
+--skills all|a,b      Embed all skills or a comma-separated subset.
+--out <path>          Write to a file instead of stdout.
+--root <path>         Use another package root.
 ```
 
 ## Exit Codes

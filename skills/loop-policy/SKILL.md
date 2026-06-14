@@ -30,7 +30,7 @@ Do not create goals for small direct tasks. A goal is the state container for op
 - Execution path: autonomous_goal or human_in_loop.
 - Mode: sequential, parallel, staged parallel, or discovery-first.
 - Approval: none, before thread creation, before implementation, before verification, before repair, before publication, before irreversible action, before each unit, or path-gated.
-- Thread orchestration: naming scheme, spawn timing, supervisor checkpoint cadence, terminal report collection, and fallback when thread tools are unavailable.
+- Delegation orchestration: thread or subagent availability, naming scheme, spawn timing, supervisor checkpoint cadence, terminal report collection, and fallback when delegation tools are unavailable.
 - Repair limit: maximum repair loops per unit.
 - Budget: time, token, command, cost, or file-change limits.
 - Escalation: when to ask the user, spawn a specialist, or stop.
@@ -49,6 +49,7 @@ approval_gate: path-gated; human approval for human_in_loop, autonomous authoriz
 repair_limit_per_unit: 2
 parallel_allowed_when: units do not share mutable surfaces
 thread_spawn_rule: after path gate and concrete dossier
+subagent_spawn_rule: same gate as threads when the environment exposes subagent tools
 thread_name_template: wf/<workflow-slug>/<unit-id>-<role>-<dossier-slug>
 supervisor_checkpoint_cadence: after handoff acknowledgement, terminal report, repair ticket creation, re-verification, and final disposition
 final_disposition_policy: ask_human unless preauthorized; autonomous defaults to keep_local_when_green
@@ -82,7 +83,7 @@ workflow:
 execution_path:
 mode:
 approval_gates:
-thread_policy:
+delegation_policy:
 repair_limit:
 parallel_rules:
 budgets:
