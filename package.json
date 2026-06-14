@@ -12,18 +12,20 @@
   },
   "homepage": "https://github.com/NikolaCehic/workflow-supervisor#readme",
   "bin": {
-    "workflow-skills": "./bin/workflow-skills.mjs"
+    "workflow-skills": "bin/workflow-skills"
   },
   "files": [
     "skills",
     "adapters",
     "docs",
+    "assets",
     "bin",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "validate": "node ./bin/workflow-skills.mjs validate"
+    "validate": "node ./bin/workflow-skills.mjs validate",
+    "prepublishOnly": "npm run validate"
   },
   "keywords": [
     "codex",
