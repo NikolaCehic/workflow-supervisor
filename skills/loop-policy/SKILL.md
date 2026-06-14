@@ -27,6 +27,7 @@ Do not create goals for small direct tasks. A goal is the state container for op
 
 ## Policy Dimensions
 
+- Intake: which execution choices are missing, which were answered, and which safe defaults were applied.
 - Execution path: autonomous_goal or human_in_loop.
 - Mode: sequential, parallel, staged parallel, or discovery-first.
 - Approval: none, before thread creation, before implementation, before verification, before repair, before publication, before irreversible action, before each unit, or path-gated.
@@ -43,6 +44,9 @@ Do not create goals for small direct tasks. A goal is the state container for op
 Use this default unless the task says otherwise:
 
 ```yaml
+intake_required_when: execution path, mode, delegation, final disposition, or mutation boundaries are missing and material
+intake_question_count: ask only missing material decisions
+use_judgment_defaults: human_in_loop, sequential, same_thread_only, keep_local_when_green, local file edits only, no destructive actions
 mode: sequential
 execution_path: human_in_loop unless explicitly authorized autonomous_goal
 approval_gate: path-gated; human approval for human_in_loop, autonomous authorization for autonomous_goal, explicit approval for irreversible or user-visible publication unless preauthorized
@@ -80,6 +84,7 @@ Do not run units in parallel when they edit the same files, documents, datasets,
 
 ```yaml
 workflow:
+intake:
 execution_path:
 mode:
 approval_gates:

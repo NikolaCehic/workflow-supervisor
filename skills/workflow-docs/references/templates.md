@@ -2,6 +2,8 @@
 
 Load only the lane needed for the task.
 
+Create Markdown artifacts under `<workspace>/.workflow/` by default. Use another directory only when the user names one, the project already has a clearer workflow-state convention, or the artifact is a final deliverable that belongs elsewhere.
+
 ## Documentation Production
 
 Read [documentation-production.md](documentation-production.md) when creating or revising documentation deliverables, briefs, outlines, factual source registers, review plans, publication assets, or maintenance plans.

@@ -44,7 +44,7 @@ If native discovery is unavailable, emit a context file:
 npx workflow-skill-pack emit-context --agent claude-code --target ~/.claude/skills --skills workflow-supervisor,workflow-docs --out CLAUDE.md
 ```
 
-Codex goal APIs degrade to `GOAL-STATE.md` and workflow docs.
+Codex goal APIs degrade to `.workflow/GOAL-STATE.md` and workflow docs.
 
 ## OpenCode
 

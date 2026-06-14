@@ -2,7 +2,7 @@
 
 ## `workflow-supervisor`
 
-Coordinate explicit supervised or agent-loop workflows. It plans first, selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named worker threads or subagents from dossiers when the environment supports and authorizes delegation. Loading the skill itself does not spawn workers. It binds Codex goals only when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
+Coordinate explicit supervised or agent-loop workflows. It starts with an intake gate when execution path, mode, delegation, final disposition, or mutation boundaries are missing. It plans first, selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named worker threads or subagents from dossiers when the environment supports and authorizes delegation. Loading the skill itself does not spawn workers. It binds Codex goals only when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
 
 ## `source-corpus`
 
@@ -30,4 +30,4 @@ Define execution path, execution mode, thread or subagent orchestration, approva
 
 ## `workflow-docs`
 
-Create durable workflow-state or documentation-production artifacts. It supports Markdown, inline briefs, tickets, design annotations, runbooks, decision logs, and other usable state media.
+Create durable workflow-state or documentation-production artifacts. Markdown artifacts default to `<workspace>/.workflow/` unless the user or project convention says otherwise. It also supports inline briefs, tickets, design annotations, runbooks, decision logs, and other usable state media.

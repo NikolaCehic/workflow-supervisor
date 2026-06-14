@@ -2,6 +2,8 @@
 
 Use these for supervised workflow state. Do not use them for ordinary documentation drafting unless workflow state or handoff is required.
 
+Default path: create these files under `<workspace>/.workflow/` unless the user provides another artifact directory or the project already has an established workflow-state location.
+
 ## WORKFLOW.md
 
 ```md

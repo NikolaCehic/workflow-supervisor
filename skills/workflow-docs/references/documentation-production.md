@@ -2,6 +2,8 @@
 
 Use these for documentation production. Do not create all of them by default; select the smallest set that supports the document type and review path.
 
+Default path: create documentation-production control artifacts under `<workspace>/.workflow/` unless the user names another artifact directory or the project already has an established workflow-state location. Final public docs, app files, articles, or published content may still belong in their normal product or documentation locations.
+
 ## Presets
 
 - Public article: `DOCUMENTATION-BRIEF.md`, `CONTENT-INVENTORY.md`, `OUTLINE.md`, `CONTENT-DRAFT.md`, `REVIEW-PLAN.md`, `PUBLISHING-CHECKLIST.md`.

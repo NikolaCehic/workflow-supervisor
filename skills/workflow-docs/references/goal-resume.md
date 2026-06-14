@@ -2,6 +2,8 @@
 
 Use these only for Codex goal mirroring, active-goal conflicts, or resume packs.
 
+Default path: create `GOAL-STATE.md` and goal-aware workflow artifacts under `<workspace>/.workflow/` unless the user provides another artifact directory or the project already has an established workflow-state location.
+
 ## Goal-Aware WORKFLOW.md Fields
 
 ```md

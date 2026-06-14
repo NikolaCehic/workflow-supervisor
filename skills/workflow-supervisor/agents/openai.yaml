@@ -1,7 +1,7 @@
 interface:
   display_name: "Workflow Supervisor"
   short_description: "Run autonomous or human-gated workflows"
-  default_prompt: "Use $workflow-supervisor to plan this workflow, choose autonomous or human-in-loop execution, then coordinate named worker threads through verification and final disposition."
+  default_prompt: "Use $workflow-supervisor to ask any missing intake questions, plan this workflow, choose autonomous or human-in-loop execution, then coordinate verification, repair, and final disposition."
 
 policy:
   allow_implicit_invocation: false

@@ -55,6 +55,8 @@ The supervisor chooses one of two paths before work starts:
 - `human_in_loop`: the agent produces an approval packet first, then waits for a human decision before implementation, worker thread creation, publication, direct push, or other irreversible action.
 - `autonomous_goal`: the agent can continue through planning, implementation, verification, repair, and final disposition only when the user or environment explicitly authorizes autonomous goal execution.
 
+If the user does not choose a path, mode, delegation style, final disposition, or mutation boundary, `$workflow-supervisor` starts with a short intake gate. It asks only for missing material choices, then records the answers or safe defaults before planning or implementation.
+
 Both paths use the same core controls: source grounding, bounded work units, dossiers, role separation, acceptance evidence, repair limits, stop gates, and final disposition choices. In Codex-style environments, the supervisor can bind the loop to an explicit goal, mirror state into workflow artifacts, and resume without losing the active objective.
 
 The pack is domain-neutral. A "surface" can be a repository path, document section, design, dataset, ticket, process, prompt, or other mutable artifact. When prerequisites are missing, the skills create a discovery or intake unit instead of inventing repo-only requirements.
@@ -72,9 +74,20 @@ In Codex-style environments, user-visible thread creation may require an explici
 Ask the agent to use the supervisor for work that needs a real loop:
 
 ```text
-Use $workflow-supervisor as an agent loop goal.
+Use $workflow-supervisor.
 
-Migrate this repo's docs to the new API shape. Inspect the source first, split the work into units, create acceptance criteria, choose the execution path, propose named worker threads, verify independently, repair failures, and leave a handoff another agent can resume from.
+Migrate this repo's docs to the new API shape.
+```
+
+If execution choices are missing, the supervisor should ask a compact intake question such as:
+
+```text
+Before I start the supervisor loop, choose the operating mode:
+1. Execution path: autonomous_goal or human_in_loop?
+2. Mode: sequential, parallel where safe, or staged parallel?
+3. Delegation: same-thread only, use threads/subagents if available, or handoff prompts only?
+4. Final disposition: keep local, open PR, push main, deploy/publish, or ask at the end?
+5. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files?
 ```
 
 For a narrower phase, invoke the specific skill:
@@ -173,36 +186,38 @@ Use `emit-context` to create `AGENTS.md`, `CLAUDE.md`, `HERMES.md`, or another p
 
 `$workflow-docs` supports two lanes.
 
+Markdown workflow artifacts are created under `<workspace>/.workflow/` by default. Use another directory only when the user names one, the project already has a clearer workflow-state convention, or the artifact is a final deliverable that belongs elsewhere.
+
 Workflow state:
 
-- `WORKFLOW.md`
-- `SOURCE-CORPUS.md`
-- `WORK-UNITS.md`
-- `DOSSIER.md`
-- `THREAD-MAP.md`
-- `ACCEPTANCE-MATRIX.md`
-- `VERIFICATION-REPORT.md`
-- `REPAIR-TICKETS.md`
-- `DECISIONS.md`
-- `HANDOFF.md`
-- `OUTCOME.md`
-- `GOAL-STATE.md`
+- `.workflow/WORKFLOW.md`
+- `.workflow/SOURCE-CORPUS.md`
+- `.workflow/WORK-UNITS.md`
+- `.workflow/DOSSIER.md`
+- `.workflow/THREAD-MAP.md`
+- `.workflow/ACCEPTANCE-MATRIX.md`
+- `.workflow/VERIFICATION-REPORT.md`
+- `.workflow/REPAIR-TICKETS.md`
+- `.workflow/DECISIONS.md`
+- `.workflow/HANDOFF.md`
+- `.workflow/OUTCOME.md`
+- `.workflow/GOAL-STATE.md`
 
 Documentation production:
 
-- `DOCUMENTATION-BRIEF.md`
-- `CONTENT-INVENTORY.md`
-- `OUTLINE.md`
-- `CONTENT-DRAFT.md`
-- `CLAIMS-REGISTER.md`
-- `STYLE-GUIDE.md`
-- `GLOSSARY.md`
-- `ASSET-REGISTER.md`
-- `REVIEW-PLAN.md`
-- `REVISION-QUEUE.md`
-- `PUBLISHING-CHECKLIST.md`
-- `PUBLICATION-LOG.md`
-- `MAINTENANCE-PLAN.md`
+- `.workflow/DOCUMENTATION-BRIEF.md`
+- `.workflow/CONTENT-INVENTORY.md`
+- `.workflow/OUTLINE.md`
+- `.workflow/CONTENT-DRAFT.md`
+- `.workflow/CLAIMS-REGISTER.md`
+- `.workflow/STYLE-GUIDE.md`
+- `.workflow/GLOSSARY.md`
+- `.workflow/ASSET-REGISTER.md`
+- `.workflow/REVIEW-PLAN.md`
+- `.workflow/REVISION-QUEUE.md`
+- `.workflow/PUBLISHING-CHECKLIST.md`
+- `.workflow/PUBLICATION-LOG.md`
+- `.workflow/MAINTENANCE-PLAN.md`
 
 Markdown is the default, but the skills can also produce inline handoffs, ticket outlines, runbooks, spreadsheet-ready tables, design review notes, or other state that a human or agent can reuse.
 

@@ -25,7 +25,7 @@ Use this lifecycle:
 4. If an active unrelated goal exists, do not create, reuse, complete, block, or update it. Ask the user whether to switch goals or continue with goal binding skipped.
 5. If no active goal exists and the invocation explicitly asks for a goal or agent loop, or the governing environment says supervisor invocations should create goals, call `create_goal` at most once with a concrete objective.
 6. Do not create a goal for simple single-turn answers, ordinary scoped edits, tiny tasks, or when the user says not to.
-7. Keep the goal objective stable. Track tactical steps in the plan, dossier, workflow docs, or `GOAL-STATE.md` rather than trying to rewrite the goal.
+7. Keep the goal objective stable. Track tactical steps in the plan, dossier, workflow docs, or `.workflow/GOAL-STATE.md` rather than trying to rewrite the goal.
 8. Use `update_goal` only for terminal `complete` or `blocked` states when the environment supports that action.
 9. Mark the goal complete only after acceptance evidence supports completion and no required supervisor work remains.
 10. Distinguish workflow/unit BLOCKED from Codex goal blocked. Mark a Codex goal blocked only after the same material blocker repeats across the required consecutive goal turns and no meaningful progress remains.
@@ -37,6 +37,7 @@ If the environment has no goal tool or goal creation is not permitted, state the
 
 - Ground the workflow in sources before creating work units.
 - Treat skill use as instruction loading in the current agent, not as thread, subagent, goal, branch, commit, PR, publication, or other side-effect creation.
+- Run the intake gate before goal creation, thread creation, implementation, publication, or other irreversible action when execution choices are missing.
 - Classify the workflow as `autonomous_goal` or `human_in_loop` before spawning threads or beginning implementation.
 - Always produce a plan. In `human_in_loop`, make it an approval packet and stop for approval. In `autonomous_goal`, make it an execution plan and continue only when autonomy is explicitly authorized.
 - Do not begin implementation until the path gate is satisfied, at least one concrete dossier exists, and no stop gate applies.
@@ -62,33 +63,63 @@ Treat these as distinct mechanisms:
 
 Start worker threads or subagents only after the path gate is satisfied, a concrete dossier exists, the loop policy authorizes delegation, and the environment allows the tool. If environment rules require explicit user approval for user-visible thread creation, obtain it before creating threads. Otherwise, output scoped handoff prompts and mark execution as `thread_unavailable` or `delegation_unavailable`.
 
+## Intake Gate
+
+When the user invokes the supervisor without enough execution choices, ask a compact intake question before creating a goal, decomposing deeply, spawning workers, implementing, publishing, or taking irreversible action. Ask only for decisions that are missing and material. Do not ask again for decisions the user already stated.
+
+Required intake decisions:
+
+- Objective and source: what artifact, spec, repo path, document, ticket, or source set controls the work.
+- Execution path: `autonomous_goal` or `human_in_loop`.
+- Execution mode: `sequential`, `parallel_where_safe`, or `staged_parallel`.
+- Delegation: `same_thread_only`, `use_threads_or_subagents_if_available`, or `handoff_prompts_only`.
+- Final disposition: `keep_local_when_green`, `open_pr_when_green`, `push_main_when_green`, `deploy_when_green`, `publish_when_green`, or `ask_at_end`.
+- Mutation boundaries: local files, dependency installs, network calls, external services, credentials, destructive operations, and any forbidden surfaces.
+- State artifacts: whether to create workflow docs under `<workspace>/.workflow/`, use another named artifact directory, or keep state inline.
+
+Use this question shape when several choices are missing:
+
+```text
+Before I start the supervisor loop, choose the operating mode:
+1. Execution path: autonomous_goal or human_in_loop?
+2. Mode: sequential, parallel where safe, or staged parallel?
+3. Delegation: same-thread only, use threads/subagents if available, or handoff prompts only?
+4. Final disposition: keep local, open PR, push main, deploy/publish, or ask at the end?
+5. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files?
+```
+
+When only one or two choices are missing, ask only those. If the user says "use your judgment", apply safe defaults: `human_in_loop`, `sequential`, `same_thread_only` unless delegation is already authorized, `keep_local_when_green`, local file edits only, no credential use, no destructive operations, and `.workflow/` docs only when the work is long-running or resumable.
+
+Treat `autonomous_goal` as explicit only when the user says autonomous, agent loop, work until done, do not wait for approval, or equivalent. Treat PR creation, direct push, deploy, publication, paid operations, production data changes, and credential use as explicit-only final disposition or boundary choices.
+
 ## Supervisor Loop
 
 1. Restate the objective, constraints, non-goals, known sources, and unknowns.
-2. Bind or reconcile the Codex goal when the invocation is goal/loop-oriented and no unrelated active goal prevents binding.
-3. Build or request a source corpus map. Use `$source-corpus` when source authority, freshness, or contradictions matter.
-4. Split the objective into bounded work units. Use `$work-unit` for ambiguous or multi-phase goals.
-5. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
-6. Build dossiers for the first implementation units and any planned verification, repair, or documentation threads. Use `$dossier-builder` when handing work to another agent or when the task has boundaries.
-7. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent or multi-thread work.
-8. Select the execution path:
+2. Run the intake gate when execution choices are missing. Record user answers, safe defaults, and explicit authorizations.
+3. Bind or reconcile the Codex goal when the invocation is goal/loop-oriented and no unrelated active goal prevents binding.
+4. Build or request a source corpus map. Use `$source-corpus` when source authority, freshness, or contradictions matter.
+5. Split the objective into bounded work units. Use `$work-unit` for ambiguous or multi-phase goals.
+6. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
+7. Build dossiers for the first implementation units and any planned verification, repair, or documentation threads. Use `$dossier-builder` when handing work to another agent or when the task has boundaries.
+8. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent or multi-thread work.
+9. Select the execution path:
    - `human_in_loop`: use when the user asks to approve plans, the work is high-risk or irreversible without preauthorization, or autonomy is unclear.
    - `autonomous_goal`: use only when the user or environment explicitly authorizes autonomous goal execution and no higher-priority rule requires human approval.
-9. Present the path-specific plan:
+10. Present the path-specific plan:
    - `human_in_loop`: approval packet with plan, work units, thread plan, approval gates, stop gates, and first dossiers. Stop until the human approves or revises it.
    - `autonomous_goal`: execution plan with the same contents plus autonomous boundaries, allowed actions, stop gates, repair limits, and final disposition policy. Continue after recording it when autonomy is authorized.
-10. After the path gate is satisfied, create or hand off named threads from the thread plan. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
-11. Talk to each worker thread after handoff: confirm receipt, answer scoped questions, collect terminal reports, and preserve report links or summaries in the supervisor state.
-12. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier threads only after the relevant implementer report is available.
-13. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair thread. Do not expand scope during repair.
-14. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
-15. Start documenter threads only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
-16. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
-17. Use `$workflow-docs` to create or refresh reusable Markdown artifacts when the workflow must persist across context loss, agents, or sessions.
-18. When all material acceptance rows are PASS or waived, apply the final disposition policy:
+11. After the path gate is satisfied, create or hand off named threads from the thread plan. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
+12. Talk to each worker thread after handoff: confirm receipt, answer scoped questions, collect terminal reports, and preserve report links or summaries in the supervisor state.
+13. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier threads only after the relevant implementer report is available.
+14. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair thread. Do not expand scope during repair.
+15. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
+16. Start documenter threads only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
+17. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
+18. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
+19. When all material acceptance rows are PASS or waived, apply the final disposition policy:
    - `human_in_loop`: ask the human to choose PR, push main, or keep local.
    - `autonomous_goal`: use the preauthorized final disposition if present; if not present, keep changes local and report the green state.
-19. Finish with an outcome report that names execution path, goal status, sources, work units, worker threads, checks, skipped checks, residual risks, final disposition decision, and next action.
+20. Finish with an outcome report that names execution path, goal status, sources, work units, worker threads, checks, skipped checks, residual risks, final disposition decision, and next action.
 
 ## Execution Paths
 

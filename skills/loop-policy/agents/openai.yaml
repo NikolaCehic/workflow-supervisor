@@ -1,7 +1,7 @@
 interface:
   display_name: "Loop Policy"
   short_description: "Control path, threads, retries, and gates"
-  default_prompt: "Use $loop-policy to define execution path, thread orchestration, retry, approval, and stopping rules for this workflow."
+  default_prompt: "Use $loop-policy to define intake defaults, execution path, delegation, retry, approval, and stopping rules for this workflow."
 
 policy:
   allow_implicit_invocation: false

@@ -17,7 +17,7 @@ Then verify the target directory contains folders such as `workflow-supervisor/S
 
 ## Goal tools are unavailable
 
-Use `GOAL-STATE.md` or a workflow handoff document. The supervisor skill explicitly falls back to workflow docs when goal tools are unavailable or not permitted.
+Use `.workflow/GOAL-STATE.md` or a workflow handoff document. The supervisor skill explicitly falls back to workflow docs when goal tools are unavailable or not permitted.
 
 ## Too many docs are created
 

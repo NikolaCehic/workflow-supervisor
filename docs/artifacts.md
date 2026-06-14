@@ -2,36 +2,38 @@
 
 `$workflow-docs` creates only the smallest useful artifact set.
 
+Default location: create Markdown workflow artifacts under `<workspace>/.workflow/`. Use another directory only when the user names one, the project already has a clearer workflow-state convention, or the artifact is a final deliverable that belongs elsewhere.
+
 ## Workflow Control
 
-- `WORKFLOW.md`
-- `SOURCE-CORPUS.md`
-- `WORK-UNITS.md`
-- `DOSSIER.md`
-- `THREAD-MAP.md`
-- `ACCEPTANCE-MATRIX.md`
-- `VERIFICATION-REPORT.md`
-- `REPAIR-TICKETS.md`
-- `DECISIONS.md`
-- `HANDOFF.md`
-- `OUTCOME.md`
-- `GOAL-STATE.md`
+- `.workflow/WORKFLOW.md`
+- `.workflow/SOURCE-CORPUS.md`
+- `.workflow/WORK-UNITS.md`
+- `.workflow/DOSSIER.md`
+- `.workflow/THREAD-MAP.md`
+- `.workflow/ACCEPTANCE-MATRIX.md`
+- `.workflow/VERIFICATION-REPORT.md`
+- `.workflow/REPAIR-TICKETS.md`
+- `.workflow/DECISIONS.md`
+- `.workflow/HANDOFF.md`
+- `.workflow/OUTCOME.md`
+- `.workflow/GOAL-STATE.md`
 
 ## Documentation Production
 
-- `DOCUMENTATION-BRIEF.md`
-- `CONTENT-INVENTORY.md`
-- `OUTLINE.md`
-- `CONTENT-DRAFT.md`
-- `CLAIMS-REGISTER.md`
-- `STYLE-GUIDE.md`
-- `GLOSSARY.md`
-- `ASSET-REGISTER.md`
-- `REVIEW-PLAN.md`
-- `REVISION-QUEUE.md`
-- `PUBLISHING-CHECKLIST.md`
-- `PUBLICATION-LOG.md`
-- `MAINTENANCE-PLAN.md`
+- `.workflow/DOCUMENTATION-BRIEF.md`
+- `.workflow/CONTENT-INVENTORY.md`
+- `.workflow/OUTLINE.md`
+- `.workflow/CONTENT-DRAFT.md`
+- `.workflow/CLAIMS-REGISTER.md`
+- `.workflow/STYLE-GUIDE.md`
+- `.workflow/GLOSSARY.md`
+- `.workflow/ASSET-REGISTER.md`
+- `.workflow/REVIEW-PLAN.md`
+- `.workflow/REVISION-QUEUE.md`
+- `.workflow/PUBLISHING-CHECKLIST.md`
+- `.workflow/PUBLICATION-LOG.md`
+- `.workflow/MAINTENANCE-PLAN.md`
 
 ## State Medium
 
