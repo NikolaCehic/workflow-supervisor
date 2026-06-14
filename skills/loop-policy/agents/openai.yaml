@@ -1,0 +1,7 @@
+interface:
+  display_name: "Loop Policy"
+  short_description: "Control path, threads, retries, and gates"
+  default_prompt: "Use $loop-policy to enforce complete intake before work starts, forbid keyword shortcuts, require explicit user answers for every intake field, then define execution path, delegation, retry, approval, and stopping rules."
+
+policy:
+  allow_implicit_invocation: false

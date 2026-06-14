@@ -1,0 +1,7 @@
+interface:
+  display_name: "Worker Roles"
+  short_description: "Define narrow worker thread contracts"
+  default_prompt: "Use $worker-roles to assign strict thread roles and prevent role bleed in this workflow."
+
+policy:
+  allow_implicit_invocation: false

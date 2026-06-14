@@ -1,0 +1,8 @@
+{
+  "agent": "codex",
+  "status": "native",
+  "defaultTarget": "~/.agents/skills",
+  "projectTarget": "<project>/.agents/skills",
+  "metadata": "agents/openai.yaml",
+  "invocation": "Use $workflow-supervisor ..."
+}

@@ -1,0 +1,8 @@
+{
+  "agent": "hermesagent",
+  "status": "portable",
+  "defaultTarget": "${HERMESAGENT_HOME:-${HERMES_HOME:-~/.hermes}}/skills",
+  "projectTarget": "<project>/.hermes/skills",
+  "metadata": "SKILL.md",
+  "fallback": "workflow-supervisor emit-context --agent hermesagent --out HERMES.md"
+}

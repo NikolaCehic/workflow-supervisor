@@ -1,0 +1,45 @@
+{
+  "name": "workflow-supervisor",
+  "version": "0.1.0",
+  "description": "Installable workflow supervision skills for Codex, Claude Code, OpenCode, HermesAgent, and generic agent workspaces.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NikolaCehic/workflow-supervisor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NikolaCehic/workflow-supervisor/issues"
+  },
+  "homepage": "https://github.com/NikolaCehic/workflow-supervisor#readme",
+  "bin": {
+    "workflow-supervisor": "bin/workflow-skills",
+    "workflow-skills": "bin/workflow-skills"
+  },
+  "files": [
+    "skills",
+    "adapters",
+    "docs",
+    "assets",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "validate": "node ./bin/workflow-skills.mjs validate && npm test",
+    "prepublishOnly": "npm run validate"
+  },
+  "keywords": [
+    "codex",
+    "claude-code",
+    "opencode",
+    "hermesagent",
+    "skills",
+    "workflow",
+    "agent"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
