@@ -1,147 +1,269 @@
 # Workflow Supervisor
 
-Portable workflow skills for supervising complex agent work without turning the package into a full harness.
+Workflow Supervisor is a small skill pack and npm helper for making coding agents handle complex work with discipline.
+
+It turns a vague request like:
+
+```text
+Use workflow-supervisor to migrate the database from SQLite to LanceDB.
+```
+
+into a supervised workflow with intake, source grounding, bounded work units, concrete worker dossiers, independent verification, repair loops, and evidence-backed output.
+
+It currently supports certified automated worker delegation for **Codex** and **Claude Code**.
 
 ![Workflow Supervisor hero image showing the supervisor coordinating source corpus, work units, dossiers, roles, loop policy, acceptance, repair, workflow docs, and final outputs](assets/workflow-supervisor-hero.png)
 
-Workflow Supervisor is an installable skill pack and small npm CLI for Codex and Claude Code. It is built for work that is too broad, risky, ambiguous, or long-running to trust to one ordinary prompt.
+## What It Is
 
-The package enforces a simple contract:
+Workflow Supervisor is not another agent product. It is a thin coordination layer for agents that already exist.
 
-```text
-complete intake
--> source grounding
--> bounded work units
--> DossierV1 preflight
--> one-shot worker delegation
--> WorkerReportV1 validation
--> verification, repair, and final disposition
+The supervisor is the visible agent in the conversation. It owns the plan, asks the user questions, creates work units, validates worker contracts, launches workers, reads reports, and decides what happens next.
+
+Workers are short-lived CLI runs:
+
+```bash
+workflow-supervisor delegate --agent codex --role implementer --unit U1 --dossier .workflow/dossiers/U1.yaml
+workflow-supervisor delegate --agent claude-code --role verifier --unit U1 --dossier .workflow/dossiers/U1.yaml
 ```
 
-It does not create a daemon, queue, mailbox, dashboard, or product-sized harness. The supervisor stays in the visible conversation; workers are short-lived CLI runs with bounded context.
+Each worker gets only the context it needs. It returns one structured report. The supervisor remains the coordinator.
+
+## The Moat
+
+The moat is not a clever prompt. The moat is the set of gates that prevent agents from drifting.
+
+Workflow Supervisor enforces:
+
+- complete intake before work starts
+- no keyword-based skipping
+- bounded work units before implementation
+- machine-checkable `DossierV1` before workers start
+- role separation between implementer, verifier, repair, and documenter
+- normalized `WorkerReportV1` output from every worker
+- evidence required for PASS
+- automatic BLOCKED reports for vague dossiers, missing CLIs, auth failures, invalid output, timeouts, forbidden edits, or verifier mutations
+
+That means the system does not merely ask agents to behave. It blocks unsafe or vague execution before it happens.
 
 ## What It Solves
 
-Use this pack when an agent needs to:
+Large agent tasks fail in predictable ways:
 
-- ask and enforce complete intake before work starts
-- split a broad goal into bounded work units
-- create concrete worker dossiers with allowed and forbidden surfaces
-- separate implementer, verifier, repair, and documenter roles
-- run automated workers through Codex or Claude Code
-- reject vague worker contracts before model calls happen
-- require evidence-backed PASS, FAIL, or BLOCKED reports
-- preserve resumable workflow state in Markdown artifacts
+- the agent starts before asking enough questions
+- "autonomous" or "use workflow supervisor" gets treated as permission to act
+- the context window fills with unrelated history
+- handoffs are vague
+- implementers verify their own work
+- verifiers say "looks good" without evidence
+- repair work expands scope
+- progress disappears after context compaction
+- every platform has a different output style
 
-Do not use it for tiny edits, one-off commands, routine README wording, or tasks with clear files and clear acceptance criteria.
+Workflow Supervisor solves this by making the workflow explicit and resumable.
 
-## Supported Targets
+The conversation holds the supervisor. The `.workflow/` artifacts hold durable state. Workers get small, role-specific dossiers instead of the full conversation. Reports come back in one schema.
 
-Automated worker delegation is certified for:
+## What It Is Used For
 
-| Agent | Install target | Worker adapter |
-|---|---|---|
-| Codex | `~/.agents/skills` or `<project>/.agents/skills` | `codex exec --json --output-schema` |
-| Claude Code | `${CLAUDE_HOME:-~/.claude}/skills` or `<project>/.claude/skills` | `claude -p --output-format json --json-schema` |
+Use it for work that is:
 
-`generic` is supported only for Markdown instruction export into a custom directory. It is not a certified automated delegation adapter.
+- broad or ambiguous
+- multi-step
+- high-risk
+- likely to need repair loops
+- likely to exceed one context window
+- important enough to require independent verification
+- easier to handle as several bounded units
 
-## How The Supervisor Runs
+Good examples:
 
-Using `$workflow-supervisor` loads instructions into the current agent. It does not automatically create threads, subagents, workers, goals, branches, commits, pull requests, deployments, or publications.
+- migrate SQLite storage to LanceDB
+- refactor authentication across several modules
+- update docs from a new API spec
+- implement a feature with tests and verification
+- review and repair a messy PR
+- produce durable workflow docs for a long-running task
 
-The current agent acts as the supervisor:
+Do not use it for:
 
-1. It asks the required intake questions.
-2. It creates a source map, work units, loop policy, acceptance rows, and dossiers.
-3. It validates each dossier.
-4. It launches role-scoped workers only after the path gate is satisfied.
-5. It reads one normalized report from each worker.
-6. It routes verification failures into repair work.
-7. It produces the final outcome report and disposition.
+- tiny edits
+- one-off shell commands
+- obvious single-file changes
+- quick explanations
+- tasks where a normal agent turn is enough
 
-Workers do not talk to each other. Workers do not ask the human directly. If a worker needs a human decision, it returns `BLOCKED` and the supervisor asks the user.
+## How It Works
 
-## Intake Gate
-
-The supervisor must ask every required intake item before planning deeply, binding a Codex goal, implementing, delegating workers, publishing, or taking irreversible action.
+The lifecycle is:
 
 ```text
-Before I start the supervisor loop, answer every intake item:
-1. Objective and source: what artifact, spec, repo path, document, ticket, or source set controls the work?
-2. Execution path: autonomous_goal or human_in_loop?
-3. Mode: sequential, parallel where safe, or staged parallel?
-4. Delegation: automated worker delegation, native threads/subagents if available, or same-session phased?
-5. Final disposition: keep local, open PR, push main, deploy/publish, or ask at the end?
-6. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files?
-7. State artifacts: create `.workflow/` docs, use another artifact directory, or keep state inline?
+intake
+-> source grounding
+-> work units
+-> acceptance matrix
+-> DossierV1
+-> worker delegation
+-> WorkerReportV1
+-> verification
+-> repair if needed
+-> re-verification
+-> documentation
+-> final disposition
 ```
 
-Keywords do not satisfy intake. A prompt like `use workflow-supervisor to migrate db from sqlite to LanceDB` gives an objective, but it does not authorize execution path, mutation boundaries, delegation, or final disposition.
+### 1. Intake
 
-## Worker Delegation
+The supervisor must ask the user for every required decision before it plans deeply or starts work:
 
-The portable worker command is:
+```text
+1. Objective and source
+2. Execution path: autonomous_goal or human_in_loop
+3. Mode: sequential, parallel where safe, or staged parallel
+4. Delegation: automated workers, native subagents if available, or same-session phased
+5. Final disposition: keep local, open PR, push, deploy, publish, or ask at end
+6. Boundaries: installs, network, credentials, destructive operations, forbidden surfaces
+7. State artifacts: .workflow docs, another directory, or inline state
+```
+
+If any answer is missing or vague, the supervisor asks again and stops.
+
+### 2. Source Grounding
+
+The supervisor identifies the source of truth: files, specs, docs, tickets, user decisions, commands, or external constraints.
+
+If source authority is unclear, the first work unit becomes discovery instead of implementation.
+
+### 3. Work Units
+
+The supervisor splits the objective into bounded units.
+
+For a SQLite to LanceDB migration, units might be:
+
+```text
+U1 dependency and config
+U2 storage adapter
+U3 data migration path
+U4 tests and regression checks
+U5 docs and outcome report
+```
+
+### 4. DossierV1
+
+Before any worker starts, the supervisor creates a concrete `DossierV1`.
+
+A dossier names:
+
+- the exact work unit
+- the worker role
+- allowed surfaces
+- forbidden surfaces
+- must-read sources
+- acceptance rows
+- required evidence
+- adversarial checks
+- stop gates
+- required report schema
+
+Then the package validates it:
 
 ```bash
-workflow-supervisor delegate \
-  --agent codex \
-  --role implementer \
-  --unit U1 \
-  --cwd . \
-  --dossier .workflow/dossiers/U1-implementer.yaml
+workflow-supervisor validate-dossier .workflow/dossiers/U2-implementer.yaml --role implementer --unit U2 --json
 ```
 
-The same command works for Claude Code:
+If the dossier says `all files`, `TBD`, `unknown`, `as needed`, or leaves open questions unresolved, it fails. No worker starts.
+
+### 5. Worker Delegation
+
+The supervisor launches one role-scoped worker through Codex or Claude Code.
 
 ```bash
-workflow-supervisor delegate \
-  --agent claude-code \
-  --role verifier \
-  --unit U1 \
-  --cwd . \
-  --dossier .workflow/dossiers/U1-verifier.yaml
+workflow-supervisor delegate --agent codex --role implementer --unit U2 --dossier .workflow/dossiers/U2-implementer.yaml
 ```
 
-Each worker receives only its role, unit, dossier, sources, acceptance rows, stop gates, and report schema. It does not inherit the full user conversation.
+The worker does not get the whole chat. It receives the dossier and report schema.
 
-## DossierV1 Gate
+### 6. Verification And Repair
 
-No valid dossier, no worker.
+A verifier checks the implementer's work against acceptance rows.
 
-Before delegation, validate the worker contract:
+If verification fails, the supervisor creates repair work. Repairs must point back to verifier findings or acceptance rows. After repair, verification runs again.
 
-```bash
-workflow-supervisor validate-dossier .workflow/dossiers/U1-implementer.yaml \
-  --role implementer \
-  --unit U1 \
-  --json
+### 7. Final Disposition
+
+The supervisor applies the final disposition chosen during intake:
+
+- keep changes local
+- open a PR
+- push
+- deploy
+- publish
+- ask at the end
+
+No final irreversible action is inferred from vibes.
+
+## What The User Sees
+
+The user sees the supervisor, not worker chatter.
+
+In `human_in_loop`, the user sees:
+
+```text
+intake question
+approval packet
+progress summaries
+blocker questions if needed
+final report
 ```
 
-`validate-dossier` accepts JSON, YAML, or fenced YAML in Markdown. It rejects:
+In `autonomous_goal`, the user sees:
 
-- missing required fields
-- placeholders such as `TBD`, `unknown`, `as needed`, or `use your judgment`
-- broad mutable surfaces such as `all files`, `entire repo`, or `*`
-- missing forbidden surfaces
-- unresolved open questions
-- role or unit mismatches
-- missing acceptance rows
-- worker prompts that do not require `WorkerReportV1`
+```text
+intake question
+execution plan
+periodic progress summaries
+blockers only when needed
+final report
+```
 
-`delegate` runs this preflight automatically when `--dossier` is provided. If the dossier is missing or invalid, it returns a normalized `BLOCKED` report with `reason: invalid_dossier`, and no worker process starts.
+Workers do not ask the user questions directly. They return `BLOCKED` and the supervisor decides how to route it.
 
-## WorkerReportV1
+## What The Output Is
 
-Every worker result is normalized into `WorkerReportV1`:
+Workflow Supervisor produces three kinds of output.
+
+### 1. Durable Workflow State
+
+Usually under `.workflow/`:
+
+```text
+WORKFLOW.md
+SOURCE-CORPUS.md
+WORK-UNITS.md
+DOSSIER.md
+WORKER-MAP.md
+ACCEPTANCE-MATRIX.md
+VERIFICATION-REPORT.md
+REPAIR-TICKETS.md
+DECISIONS.md
+HANDOFF.md
+OUTCOME.md
+GOAL-STATE.md
+```
+
+These files make the workflow resumable after context compaction or handoff.
+
+### 2. Worker Reports
+
+Every worker returns `WorkerReportV1`:
 
 ```json
 {
   "schema": "WorkerReportV1",
   "status": "PASS",
   "role": "verifier",
-  "unit_id": "U1",
-  "summary": "Verified LanceDB search path.",
+  "unit_id": "U2",
+  "summary": "Verified LanceDB-backed search path.",
   "changed_surfaces": [],
   "evidence": ["pytest tests/test_search.py passed"],
   "checks_run": ["pytest tests/test_search.py"],
@@ -155,28 +277,23 @@ Every worker result is normalized into `WorkerReportV1`:
 }
 ```
 
-The wrapper rejects invalid worker output, PASS without evidence, verifier file mutations, forbidden-surface changes, timeouts, auth failures, and non-zero PASS results.
+### 3. Final Supervisor Report
 
-## Example Lifecycle
+The final report names:
 
-For a request like:
+- execution path
+- goal status
+- sources used
+- work units completed
+- workers delegated
+- checks run
+- skipped checks
+- repairs performed
+- residual risks
+- final disposition
+- next action
 
-```text
-Use workflow-supervisor to migrate db from sqlite to LanceDB.
-```
-
-The correct first action is intake, not implementation. After the user answers every intake item, the supervisor can proceed:
-
-1. Source map: find SQLite imports, data access code, migrations, tests, and LanceDB requirements.
-2. Work units: split into dependency/config, storage adapter, migration path, tests, and docs.
-3. Acceptance matrix: define evidence for each unit.
-4. Dossiers: create `DossierV1` contracts for implementer and verifier workers.
-5. Delegation: run Codex or Claude Code workers through `workflow-supervisor delegate`.
-6. Verification: reject unsupported PASS reports and route FAIL into repair.
-7. Documentation: update `.workflow/` and project docs after evidence exists.
-8. Final disposition: keep local, open PR, push, deploy, publish, or ask at end based only on intake.
-
-## Install
+## How To Install
 
 From a local checkout:
 
@@ -184,102 +301,65 @@ From a local checkout:
 git clone https://github.com/NikolaCehic/workflow-supervisor.git
 cd workflow-supervisor
 npm run validate
-node ./bin/workflow-skills.mjs install --agent codex --scope user
 ```
 
-After npm publication:
+Install for Codex:
 
 ```bash
 npx workflow-supervisor install --agent codex --scope user
+```
+
+Install for Claude Code:
+
+```bash
 npx workflow-supervisor install --agent claude-code --scope user
 ```
 
-Project-local install:
+Install for both in a project:
 
 ```bash
 npx workflow-supervisor install --agent all --scope project --project .
 ```
 
-Generic Markdown export:
+Export generic Markdown instructions:
 
 ```bash
-npx workflow-supervisor emit-context \
-  --agent generic \
-  --skills workflow-supervisor,workflow-docs \
-  --out AGENTS.md
+npx workflow-supervisor emit-context --agent generic --out AGENTS.md
 ```
 
-## CLI
+## How To Use
+
+In Codex or Claude Code, ask explicitly:
+
+```text
+Use $workflow-supervisor to migrate this repo from SQLite to LanceDB.
+```
+
+The correct next step is not implementation. The correct next step is the intake packet.
+
+After intake is complete, the supervisor proceeds through work units, dossiers, workers, verification, repair, and final disposition.
+
+Useful CLI commands:
 
 ```bash
-workflow-supervisor list
 workflow-supervisor validate
-workflow-supervisor validate-dossier .workflow/dossiers/U1.yaml --role implementer --unit U1 --json
-workflow-supervisor doctor --agent codex
-workflow-supervisor install --agent all --scope project --project .
-workflow-supervisor emit-context --agent generic --out AGENTS.md
-workflow-supervisor delegate --agent codex --role implementer --unit U1 --dossier .workflow/dossiers/U1.yaml
+workflow-supervisor validate-dossier .workflow/dossiers/U2-implementer.yaml --role implementer --unit U2 --json
+workflow-supervisor delegate --agent codex --role implementer --unit U2 --dossier .workflow/dossiers/U2-implementer.yaml
+workflow-supervisor delegate --agent claude-code --role verifier --unit U2 --dossier .workflow/dossiers/U2-verifier.yaml
 workflow-supervisor delegate-doctor --agent all --probe --require-pass
 ```
 
-See [docs/cli.md](docs/cli.md) for the full command reference.
+## For Agents
 
-## Included Skills
+If you are an AI agent reading this README, follow these rules:
 
-| Skill | Purpose |
-|---|---|
-| `$workflow-supervisor` | Coordinates intake, work units, delegation, verification, repair, docs, goal state, and final disposition. |
-| `$source-corpus` | Ranks and reconciles sources of truth. |
-| `$work-unit` | Decomposes broad objectives into bounded units. |
-| `$dossier-builder` | Builds concrete `DossierV1` worker contracts. |
-| `$worker-roles` | Separates implementer, verifier, repair, documenter, reviewer, and synthesis responsibilities. |
-| `$acceptance-matrix` | Defines evidence-backed PASS, FAIL, BLOCKED, and waiver criteria. |
-| `$loop-policy` | Defines retry limits, approval gates, parallel safety, budgets, and stop rules. |
-| `$workflow-docs` | Creates durable workflow and documentation-production artifacts. |
+1. Do not start work before complete intake.
+2. Do not infer missing permissions from user intent.
+3. Do not delegate without a valid `DossierV1`.
+4. Do not accept worker prose as completion.
+5. Trust only `WorkerReportV1` reports.
+6. Treat verifier edits as invalid.
+7. Ask the user only through the supervisor.
+8. Preserve enough `.workflow/` state for another agent to resume.
 
-## Workflow Artifacts
-
-When state needs to survive compaction, handoff, or another session, use `.workflow/`:
-
-```text
-.workflow/WORKFLOW.md
-.workflow/SOURCE-CORPUS.md
-.workflow/WORK-UNITS.md
-.workflow/DOSSIER.md
-.workflow/WORKER-MAP.md
-.workflow/ACCEPTANCE-MATRIX.md
-.workflow/VERIFICATION-REPORT.md
-.workflow/REPAIR-TICKETS.md
-.workflow/DECISIONS.md
-.workflow/HANDOFF.md
-.workflow/OUTCOME.md
-.workflow/GOAL-STATE.md
-```
-
-Documentation-production workflows can also use briefs, inventories, outlines, drafts, claims registers, style guides, glossaries, review plans, publishing checklists, and maintenance plans.
-
-## Validation
-
-Run the package checks before publishing or installing from a checkout:
-
-```bash
-npm run validate
-workflow-supervisor delegate-doctor --agent all --probe --require-pass
-```
-
-The current validation suite covers intake enforcement, adapter narrowing, `WorkerReportV1`, `DossierV1`, vague-dossier rejection, missing CLI handling, auth-looking failures, verifier mutation guards, and live adapter probes.
-
-## Repository Layout
-
-```text
-skills/      production skill folders
-adapters/    Codex and Claude Code adapter metadata
-schemas/     DossierV1 and WorkerReportV1 schemas
-bin/         workflow-supervisor CLI
-docs/        compatibility, CLI, and delegation documentation
-tests/       lifecycle and delegate-gate tests
-```
-
-## Status
-
-The package is ready for local installation and explicit skill invocation. Keep implicit invocation disabled unless your environment has proven routing precision for these skills.
+The point is not to add ceremony. The point is to make complex agent work hard to derail.
