@@ -82,6 +82,8 @@ Required intake decisions:
 - Mutation boundaries: local files, dependency installs, network calls, external services, credentials, destructive operations, and any forbidden surfaces.
 - State artifacts: whether to create workflow docs under `<workspace>/.workflow/`, use another named artifact directory, or keep state inline.
 
+If the completed intake selects `.workflow/` state artifacts in a Git-backed codebase, ensure `<workspace>/.gitignore` contains `.workflow/` before creating those artifacts. Create `.gitignore` if needed. Treat `.workflow/` as local supervisor memory that must not be staged, committed, pushed, or included in a PR unless the user explicitly names workflow state as a final deliverable.
+
 Use this question shape for the first intake ask:
 
 ```text
@@ -114,21 +116,22 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 9. Select the execution path:
    - `human_in_loop`: use when selected in completed intake or when a higher-priority rule requires human approval after intake.
    - `autonomous_goal`: use only when selected in completed intake and no higher-priority rule requires human approval.
-10. Present the path-specific plan:
+10. If `.workflow/` artifacts will be used in a Git-backed codebase, ensure `.gitignore` contains `.workflow/` before writing them.
+11. Present the path-specific plan:
    - `human_in_loop`: approval packet with plan, work units, worker delegation plan, approval gates, stop gates, and first dossiers. Stop until the human approves or revises it.
    - `autonomous_goal`: execution plan with the same contents plus autonomous boundaries, allowed actions, stop gates, repair limits, and final disposition policy. Continue after recording it only when complete intake authorized that path.
-11. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
-12. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits.
-13. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
-14. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
-15. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
-16. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
-17. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
-18. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
-19. When all material acceptance rows are PASS or waived, apply the final disposition policy:
+12. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
+13. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits.
+14. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
+15. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
+16. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
+17. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
+18. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
+19. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
+20. When all material acceptance rows are PASS or waived, apply the final disposition policy:
    - `human_in_loop`: use the completed intake final disposition; if it is `ask_at_end`, ask the human to choose PR, push main, or keep local.
    - `autonomous_goal`: use the completed intake final disposition. If it is `ask_at_end`, stop and ask before taking any final disposition action.
-20. Finish with an outcome report that names execution path, goal status, sources, work units, delegated workers, checks, skipped checks, residual risks, final disposition decision, and next action.
+21. Finish with an outcome report that names execution path, goal status, sources, work units, delegated workers, checks, skipped checks, residual risks, final disposition decision, and next action.
 
 ## Execution Paths
 

@@ -321,6 +321,8 @@ Install for both in a project:
 npx workflow-supervisor install --agent all --scope project --project .
 ```
 
+Project installs also add `.workflow/` to the target project's `.gitignore`. Workflow state is local working memory by default; it should not be pushed with the consuming codebase unless the user explicitly chooses that.
+
 Export generic Markdown instructions:
 
 ```bash
@@ -360,6 +362,7 @@ If you are an AI agent reading this README, follow these rules:
 5. Trust only `WorkerReportV1` reports.
 6. Treat verifier edits as invalid.
 7. Ask the user only through the supervisor.
-8. Preserve enough `.workflow/` state for another agent to resume.
+8. Before creating `.workflow/` in a codebase, ensure `.gitignore` contains `.workflow/`.
+9. Preserve enough `.workflow/` state for another agent to resume, but do not stage or publish it unless explicitly requested.
 
 The point is not to add ceremony. The point is to make complex agent work hard to derail.

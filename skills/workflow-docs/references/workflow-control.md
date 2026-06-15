@@ -4,6 +4,8 @@ Use these for supervised workflow state. Do not use them for ordinary documentat
 
 Default path: create these files under `<workspace>/.workflow/` unless the user provides another artifact directory or the project already has an established workflow-state location.
 
+Git rule: in a Git-backed codebase, ensure `<workspace>/.gitignore` contains `.workflow/` before creating this directory. Treat `.workflow/` as local workflow memory; do not stage, commit, push, or include it in a PR unless the user explicitly makes workflow state a final deliverable.
+
 ## WORKFLOW.md
 
 ```md

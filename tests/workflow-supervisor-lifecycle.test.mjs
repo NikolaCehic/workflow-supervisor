@@ -86,6 +86,12 @@ test("workflow-supervisor intake does not offer manual handoff prompts as a dele
   assert.match(skillText, /Do not use manual copy\/paste handoff as the primary path/);
 });
 
+test("workflow-supervisor keeps .workflow state out of git by default", () => {
+  assert.match(skillText, /ensure `<workspace>\/\.gitignore` contains `\.workflow\/` before creating those artifacts/);
+  assert.match(skillText, /must not be staged, committed, pushed, or included in a PR unless the user explicitly names workflow state as a final deliverable/);
+  assert.match(skillText, /ensure `\.gitignore` contains `\.workflow\/` before writing them/);
+});
+
 test("OpenAI metadata prompt preserves complete intake behavior", () => {
   assert.match(agentPrompt, /Use \$workflow-supervisor/);
   assert.match(agentPrompt, /complete intake gate/i);

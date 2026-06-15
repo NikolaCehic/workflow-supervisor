@@ -21,6 +21,8 @@ When creating Markdown workflow artifacts, use `<workspace>/.workflow/` as the d
 
 Use another location only when the user names one, the project has an existing workflow-state convention, the target medium is not files, or the artifact is a final deliverable that belongs elsewhere. Keep control artifacts under `.workflow/` even when implementation files, docs, or product outputs are created in normal project locations.
 
+In a Git-backed codebase, `.workflow/` is local supervisor state by default. Before creating `.workflow/` artifacts, ensure `<workspace>/.gitignore` contains `.workflow/`. Create `.gitignore` if needed. Do not stage, commit, or publish `.workflow/` unless the completed intake explicitly names workflow state as a final deliverable.
+
 ## Artifact Lanes
 
 Use two lanes:
@@ -52,6 +54,7 @@ For documentation work, start with `DOCUMENTATION-BRIEF.md` unless the user prov
 - Do not create files the workflow will not use.
 - Reject requests to create every possible workflow document "just in case"; select the smallest doc set that preserves state or enables production.
 - Do not treat workflow docs as a required provenance ledger; use them as lightweight working memory.
+- Keep `.workflow/` ignored by Git in codebases; workflow state is private working memory unless the user explicitly chooses to publish it.
 - Adapt headings from files and commands to artifacts and evidence for non-code workflows.
 - Preserve acceptance matrices and verification reports; do not reinterpret evidence rows or change verdicts unless the workflow explicitly asks for a review/update.
 

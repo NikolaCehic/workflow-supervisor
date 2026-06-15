@@ -88,6 +88,8 @@ Default targets:
 
 `--agent all` installs only the certified target set: Codex and Claude Code. Use `generic` with `--target` when you want a Markdown instruction bundle for another environment.
 
+Project-scope installs also ensure `<project>/.gitignore` contains `.workflow/`. Workflow artifacts are local supervisor state by default and should not be pushed with the consuming repository unless the user explicitly makes them deliverables.
+
 ### `uninstall`
 
 Remove installed skill folders and package context files.
