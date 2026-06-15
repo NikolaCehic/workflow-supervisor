@@ -64,6 +64,108 @@ Workflow Supervisor solves this by making the workflow explicit and resumable.
 
 The conversation holds the supervisor. The `.workflow/` artifacts hold durable state. Workers get small, role-specific dossiers instead of the full conversation. Reports come back in one schema.
 
+## Architecture
+
+Workflow Supervisor has two halves: a portable skill pack that teaches an agent how to supervise work, and a small npm CLI that installs those skills, validates contracts, and runs one-shot worker delegations.
+
+The current chat agent is always the supervisor. It owns intake, planning, source grounding, work-unit boundaries, dossiers, verification decisions, repair routing, and final disposition. The CLI never becomes a workflow daemon or queue. It is a helper that copies skills into supported agent directories, emits portable Markdown context, validates schema-backed artifacts, and invokes a single role-scoped worker process when delegation is authorized.
+
+```mermaid
+flowchart TB
+  User["User"] --> Supervisor["Supervisor agent in current chat"]
+  Supervisor --> Skills["Installed skills: SKILL.md and agent metadata"]
+  Supervisor --> State["Durable state: .workflow/ in the target workspace"]
+  Supervisor --> CLI["workflow-supervisor CLI: bin/workflow-skills.mjs"]
+
+  subgraph Package["npm package"]
+    SkillsSource["skills/"]
+    AdapterDefs["adapters/"]
+    SchemaDefs["schemas/"]
+    Docs["docs/"]
+    CLI
+  end
+
+  CLI --> SkillsSource
+  CLI --> AdapterDefs
+  CLI --> SchemaDefs
+  CLI --> Docs
+  CLI --> Adapters["Adapter command array"]
+  Adapters --> Codex["Codex CLI worker"]
+  Adapters --> Claude["Claude Code CLI worker"]
+  Codex --> Report["WorkerReportV1 JSON"]
+  Claude --> Report
+  Report --> Supervisor
+```
+
+The package layout is intentionally simple:
+
+- `skills/` contains the opt-in supervisor skills and OpenAI metadata prompts.
+- `bin/workflow-skills.mjs` contains the installer, validator, context emitter, delegation wrapper, surface guard, and command dispatch.
+- `schemas/` defines `DossierV1` and `WorkerReportV1`.
+- `adapters/` defines certified Codex and Claude Code command arrays.
+- `docs/` explains CLI usage, portable delegation semantics, compatibility, artifacts, and troubleshooting.
+- `.workflow/` is created in consuming projects as private supervisor working memory, not as package state.
+
+```mermaid
+flowchart LR
+  Package["workflow-supervisor package"] --> Install["install"]
+  Package --> Emit["emit-context"]
+  Package --> Validate["validate and validate-dossier"]
+  Package --> Delegate["delegate and delegate-doctor"]
+
+  Install --> CodexTarget["Codex target: ~/.agents/skills or project .agents/skills"]
+  Install --> ClaudeTarget["Claude target: ~/.claude/skills or project .claude/skills"]
+  Install --> Gitignore["Project .gitignore contains .workflow/"]
+
+  Emit --> PortableFile["Portable context file: AGENTS.md or CLAUDE.md"]
+  Validate --> SkillGate["Skill, schema, adapter, and dossier gates"]
+  Delegate --> WorkerRun["One role-scoped worker CLI process"]
+```
+
+Delegation is a guarded subprocess, not an open-ended conversation between agents. The supervisor creates a concrete `DossierV1`, the CLI validates it before any worker starts, the adapter receives a role-scoped prompt and the `WorkerReportV1` schema, and the wrapper normalizes failure modes into structured `BLOCKED` reports.
+
+```mermaid
+sequenceDiagram
+  participant S as Supervisor
+  participant C as "workflow-supervisor delegate"
+  participant D as "DossierV1 validator"
+  participant G as "Surface guard"
+  participant A as "Agent adapter"
+  participant W as "Worker CLI"
+
+  S->>C: Role, unit ID, workspace, dossier path
+  C->>D: Parse JSON, YAML, or fenced YAML
+  D-->>C: Valid dossier or BLOCKED invalid_dossier
+  C->>G: Snapshot git status or explicit surfaces
+  C->>A: Build command from adapters/<agent>/adapter.json
+  A->>W: Run one CLI process with role prompt and schema
+  W-->>A: stdout, stderr, exit code, timeout signal
+  A-->>C: Raw worker output
+  C->>C: Extract and validate WorkerReportV1
+  C->>G: Compare after-state against allowed and forbidden surfaces
+  C-->>S: PASS, FAIL, or normalized BLOCKED WorkerReportV1
+```
+
+The supervisor loop is therefore stateful at the workflow level but stateless at the worker level. Every worker run is fresh, bounded by one dossier, and reduced back to one report before the supervisor decides the next step.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Intake
+  Intake --> SourceGrounding: Complete intake
+  SourceGrounding --> WorkUnits: Sources ranked
+  WorkUnits --> AcceptanceMatrix: Units bounded
+  AcceptanceMatrix --> Dossier: Evidence rows ready
+  Dossier --> Delegation: DossierV1 valid
+  Delegation --> Verification: WorkerReportV1 returned
+  Verification --> Repair: FAIL or actionable BLOCKED
+  Repair --> Verification: Repair report returned
+  Verification --> Documentation: PASS with evidence
+  Documentation --> FinalDisposition: Outcome recorded
+  FinalDisposition --> [*]
+  Dossier --> Intake: Missing decision
+  Delegation --> Intake: Worker BLOCKED with human question
+```
+
 ## What It Is Used For
 
 Use it for work that is:
