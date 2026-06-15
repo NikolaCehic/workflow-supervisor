@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-supervisor.local/schemas/dossier-v1.schema.json",
+  "title": "DossierV1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "workflow",
+    "work_unit",
+    "dossier_id",
+    "worker_name",
+    "worker_role",
+    "delegation_transport",
+    "start_condition",
+    "title",
+    "objective",
+    "non_goals",
+    "source_corpus",
+    "must_read",
+    "allowed_surfaces",
+    "forbidden_surfaces",
+    "acceptance_matrix",
+    "adversarial_checks",
+    "required_commands_or_evidence",
+    "worker_prompt",
+    "supervisor_checkpoints",
+    "completion_report_schema",
+    "verification_report_schema",
+    "stop_gates",
+    "assumptions",
+    "open_questions"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "DossierV1"
+    },
+    "workflow": {
+      "type": "string",
+      "minLength": 1
+    },
+    "work_unit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dossier_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "worker_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "worker_role": {
+      "type": "string",
+      "enum": ["implementer", "verifier", "repair", "documenter"]
+    },
+    "delegation_transport": {
+      "type": "string",
+      "enum": ["portable_delegate", "native_thread", "native_subagent", "same_session_phased"]
+    },
+    "start_condition": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "worker_prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "completion_report_schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_report_schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "non_goals": {
+      "$ref": "#/$defs/stringList"
+    },
+    "source_corpus": {
+      "$ref": "#/$defs/stringList"
+    },
+    "must_read": {
+      "$ref": "#/$defs/stringList"
+    },
+    "allowed_surfaces": {
+      "$ref": "#/$defs/stringList"
+    },
+    "forbidden_surfaces": {
+      "$ref": "#/$defs/stringList"
+    },
+    "read_only_neighbors": {
+      "$ref": "#/$defs/stringList"
+    },
+    "work_points": {
+      "$ref": "#/$defs/stringList"
+    },
+    "acceptance_matrix": {
+      "$ref": "#/$defs/stringList"
+    },
+    "adversarial_checks": {
+      "$ref": "#/$defs/stringList"
+    },
+    "required_commands_or_evidence": {
+      "$ref": "#/$defs/stringList"
+    },
+    "supervisor_checkpoints": {
+      "$ref": "#/$defs/stringList"
+    },
+    "stop_gates": {
+      "$ref": "#/$defs/stringList"
+    },
+    "assumptions": {
+      "$ref": "#/$defs/stringList"
+    },
+    "open_questions": {
+      "$ref": "#/$defs/stringList"
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

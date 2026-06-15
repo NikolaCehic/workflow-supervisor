@@ -10,7 +10,7 @@ Default location: create Markdown workflow artifacts under `<workspace>/.workflo
 - `.workflow/SOURCE-CORPUS.md`
 - `.workflow/WORK-UNITS.md`
 - `.workflow/DOSSIER.md`
-- `.workflow/THREAD-MAP.md`
+- `.workflow/WORKER-MAP.md`
 - `.workflow/ACCEPTANCE-MATRIX.md`
 - `.workflow/VERIFICATION-REPORT.md`
 - `.workflow/REPAIR-TICKETS.md`
@@ -37,4 +37,4 @@ Default location: create Markdown workflow artifacts under `<workspace>/.workflo
 
 ## State Medium
 
-Markdown is the default, but state may also be an inline brief, spreadsheet tab, ticket set, design annotation, CRM note, runbook, decision log, slide appendix, whiteboard note, or chat handoff.
+Markdown is the default, but state may also be an inline brief, spreadsheet tab, ticket set, design annotation, CRM note, runbook, decision log, slide appendix, whiteboard note, or chat continuation note.

@@ -4,5 +4,11 @@
   "defaultTarget": "~/.agents/skills",
   "projectTarget": "<project>/.agents/skills",
   "metadata": "agents/openai.yaml",
-  "invocation": "Use $workflow-supervisor ..."
+  "invocation": "Use $workflow-supervisor ...",
+  "delegate": {
+    "command": ["codex", "exec", "--json", "--skip-git-repo-check", "-c", "service_tier=\"fast\""],
+    "promptMode": "arg",
+    "schemaMode": "file",
+    "schemaFlag": "--output-schema"
+  }
 }

@@ -1,11 +1,11 @@
 ---
 name: dossier-builder
-description: Create a concrete handoff contract only when one already-bounded work unit needs a dossier for another agent, thread, future session, formal worker prompt, or durable handoff. Use when objective, sources, boundaries, acceptance rows, checks or evidence, stop gates, thread naming, start conditions, and report schemas must be captured before delegation. Do not use to plan work Codex will perform directly in the current turn, for unbounded work, or for ordinary same-thread implementation.
+description: Create a concrete delegation contract only when one already-bounded work unit needs a dossier for another agent, automated worker run, future session, formal worker prompt, or durable continuation. Use when objective, sources, boundaries, acceptance rows, checks or evidence, stop gates, worker naming, start conditions, and report schemas must be captured before delegation. Do not use to plan work Codex will perform directly in the current turn, for unbounded work, or for ordinary same-session implementation.
 ---
 
 # Dossier Builder
 
-Use this skill to prevent vague handoffs. A dossier is the contract between the supervisor and a worker.
+Use this skill to prevent vague delegation. A dossier is the contract between the supervisor and a worker.
 
 ## Domain Neutral Inputs
 
@@ -26,6 +26,14 @@ The dossier does not own acceptance design. It references or embeds acceptance r
 
 If these inputs are missing, create a discovery dossier or return BLOCKED.
 
+Before delegation, validate the dossier with:
+
+```bash
+workflow-supervisor validate-dossier <dossier-path> --role <role> --unit <unit-id> --json
+```
+
+If validation fails, do not start a worker. Return BLOCKED, create a discovery dossier, or ask the supervisor/user for the missing decision.
+
 For early discovery, the only source may be conversation context and the only allowed surface may be a planned brief, doc, or question list. Do not require repository paths or existing files.
 
 Use a provisional dossier for low-risk drafts, plans, outlines, rubrics, and options when sources are thin but the output can clearly mark assumptions. Use BLOCKED for factual, irreversible, regulated, publication, or production changes that lack material sources or boundaries.
@@ -33,11 +41,13 @@ Use a provisional dossier for low-risk drafts, plans, outlines, rubrics, and opt
 ## Dossier Shape
 
 ```yaml
+schema: DossierV1
 workflow:
 work_unit:
 dossier_id:
-thread_name:
-thread_role:
+worker_name:
+worker_role:
+delegation_transport:
 start_condition:
 title:
 objective:
@@ -57,7 +67,7 @@ acceptance_matrix:
 adversarial_checks:
 required_commands_or_evidence:
 worker_role:
-handoff_message:
+worker_prompt:
 supervisor_checkpoints:
 completion_report_schema:
 verification_report_schema:
@@ -66,7 +76,9 @@ assumptions:
 open_questions:
 ```
 
-## Handoff Rules
+The machine gate requires concrete strings or arrays for the core fields. Use `open_questions: [none]` only when no open question remains. Do not use placeholders such as `TBD`, `unknown`, `all files`, `entire repo`, `as needed`, or `use your judgment`.
+
+## Delegation Rules
 
 - Name exact files, docs, systems, or artifact paths when available.
 - Prefer concrete boundaries over broad module names.
@@ -76,10 +88,12 @@ open_questions:
 - Require workers to report skipped checks and assumptions.
 - For non-code work, use evidence such as citations, before/after excerpts, review rubrics, examples, artifact diffs, or explicit user decisions instead of commands.
 - Require repair tickets to cite the verification finding or acceptance row they repair.
-- Include a deterministic `thread_name` when delegation is planned. Use `wf/<workflow-slug>/<unit-id>-<role>-<dossier-slug>`.
+- Include a deterministic `worker_name` when delegation is planned. Use `wf/<workflow-slug>/<unit-id>-<role>-<dossier-slug>`.
 - Include `start_condition`, such as `after path gate`, `after human plan approval`, `after autonomous execution plan`, `after implementer report`, `after verification FAIL`, or `after repairs complete`.
-- Include a ready-to-send `handoff_message` that contains only the worker's role, dossier, sources, acceptance rows, stop gates, and report schema.
+- Include the selected `delegation_transport`, such as `portable_delegate`, `native_thread`, `native_subagent`, or `same_session_phased`.
+- Include a ready-to-send `worker_prompt` that contains only the worker's role, dossier, sources, acceptance rows, stop gates, and report schema.
 - Include supervisor checkpoints for kickoff acknowledgement, blocker questions, terminal report, and closeout.
+- Run `workflow-supervisor validate-dossier` before `workflow-supervisor delegate`. Treat validation failure as a stop gate.
 
 ## Failure Modes
 

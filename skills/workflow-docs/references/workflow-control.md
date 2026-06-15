@@ -1,6 +1,6 @@
 # Workflow Control Templates
 
-Use these for supervised workflow state. Do not use them for ordinary documentation drafting unless workflow state or handoff is required.
+Use these for supervised workflow state. Do not use them for ordinary documentation drafting unless workflow state or continuation is required.
 
 Default path: create these files under `<workspace>/.workflow/` unless the user provides another artifact directory or the project already has an established workflow-state location.
 
@@ -68,7 +68,7 @@ Default path: create these files under `<workspace>/.workflow/` unless the user 
 ```md
 # Work Units
 
-| ID | Thread Slug | Title | Objective | Dependencies | Status | Verification |
+| ID | Worker Slug | Title | Objective | Dependencies | Status | Verification |
 |---|---|---|---|---|---|---|
 
 ## Sequencing
@@ -85,9 +85,11 @@ Default path: create these files under `<workspace>/.workflow/` unless the user 
 
 ## Dossier ID
 
-## Thread Name
+## Worker Name
 
-## Thread Role
+## Worker Role
+
+## Delegation Transport
 
 ## Start Condition
 
@@ -117,7 +119,7 @@ Default path: create these files under `<workspace>/.workflow/` unless the user 
 
 ## Owner Or Contributor Role
 
-## Handoff Message
+## Worker Prompt
 
 ## Supervisor Checkpoints
 
@@ -128,19 +130,19 @@ Default path: create these files under `<workspace>/.workflow/` unless the user 
 ## Open Questions
 ```
 
-## THREAD-MAP.md
+## WORKER-MAP.md
 
 ```md
-# Thread Map
+# Worker Map
 
-| Thread Name | Role | Work Unit | Dossier | Start Condition | Dependencies | Status | Last Supervisor Message | Terminal Report |
+| Worker Name | Role | Transport | Work Unit | Dossier | Start Condition | Dependencies | Status | Terminal Report |
 |---|---|---|---|---|---|---|---|---|
 
 ## Supervisor Checkpoints
 
-## Blocked Threads
+## Blocked Workers
 
-## Closed Threads
+## Closed Workers
 ```
 
 ## ACCEPTANCE-MATRIX.md
@@ -165,7 +167,7 @@ Status: PASS | FAIL | BLOCKED | NEEDS REVISION | APPROVED WITH CAVEATS | READY T
 
 Verified Work Unit:
 
-Verified Thread:
+Verified Worker:
 
 ## Sources Inspected
 
@@ -262,7 +264,7 @@ Final Disposition Policy:
 
 ## Work Completed
 
-## Worker Threads
+## Workers
 
 ## Verification Evidence
 
