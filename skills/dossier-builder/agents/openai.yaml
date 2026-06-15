@@ -1,7 +1,7 @@
 interface:
   display_name: "Dossier Builder"
-  short_description: "Create concrete thread handoff contracts"
-  default_prompt: "Use $dossier-builder to create a grounded handoff dossier with thread name, start condition, and report schema for this work unit."
+  short_description: "Create concrete worker delegation contracts"
+  default_prompt: "Use $dossier-builder to create a grounded worker dossier with worker name, delegation transport, start condition, and report schema for this work unit."
 
 policy:
   allow_implicit_invocation: false

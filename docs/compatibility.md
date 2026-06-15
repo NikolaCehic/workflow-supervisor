@@ -1,12 +1,12 @@
 # Agent Compatibility
 
-The pack is built around portable `SKILL.md` folders. Codex consumes those folders directly. Other agents can use the same content as explicit prompt skills, context packs, or project-local instructions.
+The certified support set is intentionally small: Codex and Claude Code for automated delegation, plus `generic` for emitting or installing Markdown instructions into a custom directory.
 
-## Skills, Threads, And Subagents
+## Skills And Workers
 
-Loading a skill does not spawn a thread or subagent. A skill is instruction context for the current agent until the environment explicitly uses a separate execution tool.
+Loading a skill does not spawn a worker, thread, or subagent. A skill is instruction context for the current agent until the supervisor uses an approved delegation mechanism.
 
-`$workflow-supervisor` can plan worker threads or subagents, but they start only after the workflow path gate is satisfied, a concrete dossier exists, and the target environment supports the needed delegation tool. If those tools are unavailable or user-visible thread creation is not approved, use the generated handoff prompts or workflow docs as the fallback.
+`$workflow-supervisor` can plan role-scoped workers, but they start only after complete intake, the workflow path gate, a concrete dossier, and target-environment delegation support are all satisfied. The portable mechanism is the one-shot `workflow-supervisor delegate` command described in [portable-delegation.md](portable-delegation.md). Native Codex threads or Claude subagents are adapter optimizations, not workflow requirements.
 
 ## Codex
 
@@ -20,66 +20,40 @@ Codex support is native:
 Install:
 
 ```bash
-npx workflow-skill-pack install --agent codex --scope user
-npx workflow-skill-pack install --agent codex --scope project --project .
+npx workflow-supervisor install --agent codex --scope user
+npx workflow-supervisor install --agent codex --scope project --project .
 ```
 
 Use:
 
 ```text
-Use $workflow-supervisor as an agent loop goal to supervise this migration.
+Use $workflow-supervisor to supervise this migration. It should ask the complete intake before planning or work starts.
 ```
 
 ## Claude Code
 
-Claude Code environments vary by local setup. Install to the skill or prompt directory your setup uses, or choose a project-local target.
+Claude Code support uses the same `SKILL.md` folders and the `claude` CLI for one-shot delegated workers.
 
 ```bash
-npx workflow-skill-pack install --agent claude-code --target ~/.claude/skills
+npx workflow-supervisor install --agent claude-code --scope user
+npx workflow-supervisor install --agent claude-code --scope project --project .
 ```
 
 If native discovery is unavailable, emit a context file:
 
 ```bash
-npx workflow-skill-pack emit-context --agent claude-code --target ~/.claude/skills --skills workflow-supervisor,workflow-docs --out CLAUDE.md
+npx workflow-supervisor emit-context --agent claude-code --skills workflow-supervisor,workflow-docs --out CLAUDE.md
 ```
 
 Codex goal APIs degrade to `.workflow/GOAL-STATE.md` and workflow docs.
 
-## OpenCode
-
-Install to an OpenCode skill/prompt directory or project-local target:
-
-```bash
-npx workflow-skill-pack install --agent opencode --target ~/.config/opencode/skills
-npx workflow-skill-pack install --agent opencode --scope project --project .
-```
-
-If OpenCode does not read `agents/openai.yaml`, ignore that file and invoke by explicit skill names from `SKILL.md`.
-
-## HermesAgent
-
-Install to the HermesAgent skill/prompt directory configured by your environment:
-
-```bash
-npx workflow-skill-pack install --agent hermesagent --target ~/.hermes/skills
-npx workflow-skill-pack install --agent hermesagent --scope project --project .
-```
-
-User scope follows HermesAgent's documented `~/.hermes/skills` location. Project scope uses the package-local fallback `<project>/.hermes/skills` so `--agent all --scope project` can create a complete portable skill bundle.
-
-If native discovery is unavailable:
-
-```bash
-npx workflow-skill-pack emit-context --agent hermesagent --target ~/.hermes/skills --skills workflow-supervisor,workflow-docs --out HERMES.md
-```
-
 ## Generic Agent
 
-Use `generic` for any agent that can read a directory of Markdown instructions.
+Use `generic` only for Markdown instruction export or installation into a custom directory. It is not a certified automated delegation adapter.
 
 ```bash
-npx workflow-skill-pack install --agent generic --target ./agent-skills
+npx workflow-supervisor install --agent generic --target ./agent-skills
+npx workflow-supervisor emit-context --agent generic --skills workflow-supervisor,workflow-docs --out AGENTS.md
 ```
 
-Then point the agent at `./agent-skills/WORKFLOW_SKILL_PACK.md` and the individual `SKILL.md` files.
+Then point the receiving agent at `./agent-skills/WORKFLOW_SKILL_PACK.md`, the individual `SKILL.md` files, or the emitted context file.

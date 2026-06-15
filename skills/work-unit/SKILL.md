@@ -1,6 +1,6 @@
 ---
 name: work-unit
-description: Decompose fuzzy or broad objectives into bounded, sequenced, verifiable work units. Use when a task is too large, ambiguous, multi-phase, dependency-heavy, or risky to execute as one edit; when a supervisor needs packets, milestones, slices, tickets, or agent handoffs; or when scope must be narrowed before implementation. Do not use for already-small tasks with clear files and acceptance.
+description: Decompose fuzzy or broad objectives into bounded, sequenced, verifiable work units. Use when a task is too large, ambiguous, multi-phase, dependency-heavy, or risky to execute as one edit; when a supervisor needs packets, milestones, slices, tickets, or agent delegation; or when scope must be narrowed before implementation. Do not use for already-small tasks with clear files and acceptance.
 ---
 
 # Work Unit
@@ -16,7 +16,7 @@ Work units can be bounded by code package, document section, source set, stakeho
 A good work unit has:
 
 - one objective
-- a stable unit ID suitable for dossier and thread naming
+- a stable unit ID suitable for dossier and worker naming
 - named dependencies
 - explicit in-scope and out-of-scope surfaces
 - known sources or source gaps
@@ -49,7 +49,7 @@ For over-broad one-pass requests, produce a sequencing recommendation and invoke
 parent_objective:
 units:
   - id:
-    thread_slug:
+    worker_slug:
     title:
     objective:
     in_scope:

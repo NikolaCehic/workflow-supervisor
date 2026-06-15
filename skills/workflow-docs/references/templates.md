@@ -26,7 +26,7 @@ Includes:
 
 ## Workflow Control
 
-Read [workflow-control.md](workflow-control.md) when preserving supervised workflow state, work units, dossiers, acceptance matrices, verification reports, repairs, decisions, handoffs, or outcomes.
+Read [workflow-control.md](workflow-control.md) when preserving supervised workflow state, work units, dossiers, acceptance matrices, verification reports, repairs, decisions, delegation state, or outcomes.
 
 Includes:
 
@@ -34,7 +34,7 @@ Includes:
 - `SOURCE-CORPUS.md`
 - `WORK-UNITS.md`
 - `DOSSIER.md`
-- `THREAD-MAP.md`
+- `WORKER-MAP.md`
 - `ACCEPTANCE-MATRIX.md`
 - `VERIFICATION-REPORT.md`
 - `REPAIR-TICKETS.md`

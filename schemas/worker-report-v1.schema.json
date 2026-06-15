@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-supervisor.local/schemas/worker-report-v1.schema.json",
+  "title": "WorkerReportV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "role",
+    "unit_id",
+    "summary",
+    "changed_surfaces",
+    "evidence",
+    "checks_run",
+    "skipped_checks",
+    "findings",
+    "blocking_question",
+    "next_action",
+    "adapter",
+    "guard",
+    "reason"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "WorkerReportV1"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "BLOCKED"]
+    },
+    "role": {
+      "type": "string",
+      "enum": ["implementer", "verifier", "repair", "documenter"]
+    },
+    "unit_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string"
+    },
+    "changed_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "checks_run": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skipped_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blocking_question": {
+      "type": ["string", "null"]
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "adapter": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "guard": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "allowed_surface_violations",
+        "role_violations",
+        "warnings"
+      ],
+      "properties": {
+        "allowed_surface_violations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "role_violations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "reason": {
+      "type": ["string", "null"]
+    }
+  }
+}

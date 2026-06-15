@@ -2,7 +2,7 @@
 
 ## `workflow-supervisor`
 
-Coordinate explicit supervised or agent-loop workflows. It starts with an intake gate when execution path, mode, delegation, final disposition, or mutation boundaries are missing. It plans first, selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named worker threads or subagents from dossiers when the environment supports and authorizes delegation. Loading the skill itself does not spawn workers. It binds Codex goals only when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
+Coordinate explicit supervised or agent-loop workflows. It always starts with a complete intake gate before planning, implementation, goal binding, worker delegation, or final disposition. The user must answer every intake item; the supervisor must not infer or skip steps from keywords. After complete intake, it selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named workers from dossiers through the portable delegate command or an approved native adapter. Loading the skill itself does not spawn workers. It binds Codex goals only after complete intake and when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
 
 ## `source-corpus`
 
@@ -14,7 +14,7 @@ Split broad work into bounded units with objective, scope, dependencies, readine
 
 ## `dossier-builder`
 
-Create a handoff contract for one already-bounded work unit. Use it for another agent, thread, future session, or formal worker prompt, not ordinary same-thread direct work. Dossiers can include deterministic thread names, start conditions, handoff messages, checkpoints, and report schemas.
+Create a delegation contract for one already-bounded work unit. Use it for another agent, automated worker run, future session, or formal worker prompt, not ordinary same-session direct work. Dossiers can include deterministic worker names, delegation transports, start conditions, worker prompts, checkpoints, and report schemas.
 
 ## `worker-roles`
 
@@ -22,11 +22,11 @@ Define role contracts and solo-mode phase separation. It prevents role bleed: ve
 
 ## `acceptance-matrix`
 
-Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguous, resumable, or handoff workflows.
+Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguous, resumable, or delegated workflows.
 
 ## `loop-policy`
 
-Define execution path, execution mode, thread or subagent orchestration, approval gates, repair limits, parallel safety, no-progress rules, and Codex goal tool policy.
+Define execution path, execution mode, worker delegation, approval gates, repair limits, parallel safety, no-progress rules, and Codex goal tool policy.
 
 ## `workflow-docs`
 

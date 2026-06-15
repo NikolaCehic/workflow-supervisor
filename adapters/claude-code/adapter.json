@@ -3,5 +3,11 @@
   "status": "portable",
   "defaultTarget": "${CLAUDE_HOME:-~/.claude}/skills",
   "metadata": "SKILL.md",
-  "fallback": "workflow-skills emit-context --agent claude-code --out CLAUDE.md"
+  "fallback": "workflow-supervisor emit-context --agent claude-code --out CLAUDE.md",
+  "delegate": {
+    "command": ["claude", "-p", "--output-format", "json"],
+    "promptMode": "arg",
+    "schemaMode": "json",
+    "schemaFlag": "--json-schema"
+  }
 }

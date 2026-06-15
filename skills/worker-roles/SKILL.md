@@ -1,13 +1,13 @@
 ---
 name: worker-roles
-description: Define narrow role contracts only when creating explicit worker prompts or separating responsibilities across multiple agents, threads, reviewers, or formal handoffs. Use to prevent role bleed such as verifiers editing implementation, implementers self-approving, repair authors inventing scope, or documenters starting before evidence exists. Do not use for ordinary single-agent reviewing, editing, researching, documenting, or implementing in the current thread.
+description: Define narrow role contracts only when creating explicit worker prompts or separating responsibilities across multiple agents, automated worker runs, reviewers, or formal delegation. Use to prevent role bleed such as verifiers editing implementation, implementers self-approving, repair authors inventing scope, or documenters starting before evidence exists. Do not use for ordinary single-agent reviewing, editing, researching, documenting, or implementing in the current session.
 ---
 
 # Worker Roles
 
 Use this skill to make delegation safe. Each worker prompt should include one role, one objective, allowed behavior, forbidden behavior, sources to read, and a report schema.
 
-No worker thread should start before the supervisor path gate is satisfied. In `human_in_loop`, that means human plan approval. In `autonomous_goal`, that means explicit autonomous authorization plus a recorded execution plan. Role-specific start conditions below are additional gates after the path gate.
+No worker should start before the supervisor intake and path gates are satisfied. In `human_in_loop`, that means complete intake plus human plan approval. In `autonomous_goal`, that means complete intake selecting `autonomous_goal` plus a recorded execution plan. Role-specific start conditions below are additional gates after the path gate.
 
 ## Domain Neutrality
 
@@ -15,7 +15,7 @@ Use "Executor" or "Producer" instead of "Implementer" when the work is documenta
 
 ## Solo Mode
 
-When separate agents, threads, or reviewers are unavailable, collapse roles into phases in the same session. Label verification as `self-check`, not independent verification. Require independent review only when the user asks, the work is high-risk, publication-bound, regulated, security-sensitive, or the loop policy requires it.
+When separate automated workers, agents, or reviewers are unavailable, collapse roles into phases in the same session. Label verification as `self-check`, not independent verification. Require independent review only when the user asks, the work is high-risk, publication-bound, regulated, security-sensitive, or the loop policy requires it.
 
 ## Role Contracts
 
@@ -23,7 +23,7 @@ When separate agents, threads, or reviewers are unavailable, collapse roles into
 
 - May edit only allowed surfaces.
 - Must not stage, commit, publish, approve, or edit workflow records unless assigned.
-- Starts only after the path gate is satisfied and the supervisor sends the implementation dossier.
+- Starts only after complete intake and the path gate are satisfied and the supervisor sends the implementation dossier.
 - Must report files or artifacts changed, decisions followed, checks run or evidence produced, skipped checks, assumptions, and acceptance mapping.
 
 ### Verifier
@@ -52,7 +52,7 @@ When separate agents, threads, or reviewers are unavailable, collapse roles into
 ### Documenter
 
 - Creates or updates workflow artifacts from evidence.
-- Starts after the path gate for planning docs, or after implementation and verification evidence exists for outcome docs.
+- Starts after complete intake and the path gate for planning docs, or after implementation and verification evidence exists for outcome docs.
 - Must preserve unknowns and residual risks.
 - Must not turn unresolved questions into facts.
 
@@ -91,13 +91,13 @@ When separate agents, threads, or reviewers are unavailable, collapse roles into
 - A repair author that adds product requirements is expanding scope.
 - A documenter that hides unknowns is corrupting resume state.
 - A supervisor that implements code should mark that role switch explicitly.
-- Same-thread verification is a self-check unless an independent verifier separately inspects the evidence.
+- Same-session verification is a self-check unless an independent verifier separately inspects the evidence.
 
 ## Worker Prompt Minimums
 
 Include:
 
-- thread name
+- worker name
 - role name
 - work unit and objective
 - must-read sources
@@ -106,10 +106,10 @@ Include:
 - stop gates
 - exact report schema
 
-## Thread Interaction Rules
+## Worker Interaction Rules
 
-- Workers should acknowledge the handoff before acting.
-- Workers should ask the supervisor for clarification when a blocker affects scope, sources, surfaces, checks, or acceptance.
-- Workers should not message other worker threads directly unless the supervisor allows it in the loop policy.
+- Workers should confirm they received the assigned dossier before acting when the transport supports acknowledgement.
+- Workers should return `BLOCKED` to the supervisor when a blocker affects scope, sources, surfaces, checks, or acceptance.
+- Workers should not message other workers directly unless the supervisor allows it in the loop policy.
 - Workers should send one terminal report with PASS, FAIL, BLOCKED, or PARTIAL status using the assigned schema.
-- Verifier and repair threads should cite acceptance row IDs and prior report IDs so the supervisor can route the loop.
+- Verifier and repair workers should cite acceptance row IDs and prior report IDs so the supervisor can route the loop.
