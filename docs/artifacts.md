@@ -4,6 +4,8 @@
 
 Default location: create Markdown workflow artifacts under `<workspace>/.workflow/`. Use another directory only when the user names one, the project already has a clearer workflow-state convention, or the artifact is a final deliverable that belongs elsewhere.
 
+In Git-backed codebases, `.workflow/` is local working state. Ensure `<workspace>/.gitignore` contains `.workflow/` before creating artifacts there, and do not commit that directory unless the user explicitly makes workflow state a deliverable.
+
 ## Workflow Control
 
 - `.workflow/WORKFLOW.md`

@@ -1,11 +1,34 @@
 ---
 name: workflow-supervisor
-description: Coordinate open-ended, multi-step agent workflows when the user explicitly requests supervised or agent-loop coordination and at least one hard trigger is present, or when no explicit supervisor wording exists but two or more hard triggers are present. Hard triggers include multi-agent or worker delegation, durable resume need, high-risk independent verification, contradictory or missing sources, multi-unit scope, repair loops, approval gates, or workflow-state documentation. Do not use for simple single-turn answers, ordinary repo inspection, medium scoped edits, typo fixes, one-off tests, or narrowly scoped changes that can be completed directly.
+description: Coordinate supervised multi-agent workflows. Trigger whenever the user explicitly invokes workflow-supervisor, $workflow-supervisor, supervised workflow, dossiers, work units, worker agents, handoffs, approval gates, durable resume, or workflow-state documentation. When explicitly invoked, always run the full strict supervisor workflow regardless of task size; do not downscope, skip human approval or complete intake, skip dossiers, skip work units, skip worker-agent contracts, skip worker handoffs, or skip verification because a task appears simple. When not explicitly invoked, use only for workflows with hard supervisor triggers such as multi-agent handoff, durable resume, high-risk verification, contradictory or missing sources, multi-unit scope, repair loops, approval gates, or workflow-state documentation.
 ---
 
 # Workflow Supervisor
 
-Use this skill as the coordinating spine for complex work. The supervisor owns decomposition, delegation quality, loop discipline, stop gates, and outcome reporting. It may do source discovery and reporting itself, but implementation, verification, repair-ticket writing, and documentation should be treated as separate roles when an automated worker path is available. Native threads or subagents are optional transport optimizations, not the workflow contract.
+Use this skill as the coordinating spine for supervised multi-agent work. The supervisor owns decomposition, worker-agent handoff quality, loop discipline, stop gates, and outcome reporting. It may do source discovery and reporting itself, but implementation, verification, repair-ticket writing, and documentation must be treated as separate worker-agent responsibilities when an automated worker path is available. Native threads, subagents, or the portable delegate command are transports for those worker agents.
+
+## Strict Explicit Invocation Contract
+
+When the user explicitly invokes `workflow-supervisor`, `$workflow-supervisor`, or says to use this skill, the workflow is in `strict_full_workflow` mode. Task size is irrelevant. Do not decide that a request is too small, too easy, local-only, or single-file to receive the full workflow.
+
+Strict mode always requires:
+
+1. Complete intake before planning, goal creation, worker delegation, implementation, publication, or irreversible action.
+2. A human approval question before implementation unless completed intake explicitly selects `autonomous_goal`.
+3. A source corpus map, even if the source corpus is only "user prompt plus current workspace".
+4. At least one bounded work unit, even for a tiny change. Use `WU-001` when there is only one unit.
+5. A dossier for each implementation work unit before implementation begins.
+6. An acceptance matrix or acceptance draft with evidence expectations before implementation begins.
+7. A worker-agent plan with implementer, verifier, repair-author, and documenter agents.
+8. A worker lifecycle record using `planned -> handed_off -> acknowledged -> reported -> verified -> closed`.
+9. Verification labeled as `self-check`, `focused-check`, or `independent-verifier`.
+10. A final disposition question or recorded completed-intake final disposition after verification.
+
+Worker agents are mandatory when the environment provides worker, subagent, thread, or portable delegation tools. The supervisor must hand off implementation, verification, repair-authoring when needed, and documentation to separate agents with scoped dossiers and the required report schema. Run worker agents sequentially by default unless completed intake explicitly authorizes parallelism.
+
+If the environment cannot create, message, or delegate to worker agents, record `worker_agent_unavailable` and stop for the human decision unless completed intake explicitly selected `same_session_phased`. Do not silently collapse worker agents into same-session work.
+
+Do not nest supervisors recursively. A worker agent that receives a supervisor-scoped dossier must perform its assigned role instead of spawning another supervisor layer unless the parent supervisor explicitly asks for a child supervisor.
 
 ## Domain Neutrality
 
@@ -25,7 +48,7 @@ Use this lifecycle:
 4. If an active relevant goal exists, reuse it.
 5. If an active unrelated goal exists, do not create, reuse, complete, block, or update it. Ask the user whether to switch goals or continue with goal binding skipped.
 6. If no active goal exists and completed intake authorizes goal binding, call `create_goal` at most once with a concrete objective.
-7. Do not create a goal for simple single-turn answers, ordinary scoped edits, tiny tasks, incomplete intake, or when the user says not to.
+7. Do not create a goal for incomplete intake or when the user says not to.
 8. Keep the goal objective stable. Track tactical steps in the plan, dossier, workflow docs, or `.workflow/GOAL-STATE.md` rather than trying to rewrite the goal.
 9. Use `update_goal` only for terminal `complete` or `blocked` states when the environment supports that action.
 10. Mark the goal complete only after acceptance evidence supports completion and no required supervisor work remains.
@@ -41,12 +64,13 @@ If the environment has no goal tool or goal creation is not permitted, state the
 - Run the complete intake gate before goal creation, worker delegation, implementation, publication, or other irreversible action.
 - Do not infer execution path, mode, delegation, final disposition, or boundaries from keywords, action verbs, or intent guesses.
 - Classify the workflow as `autonomous_goal` or `human_in_loop` only from completed intake answers before delegating workers or beginning implementation.
+- Explicit invocation always requires complete intake, work units, dossiers, worker-agent contracts, scoped handoffs, report schema, and verification; do this even for trivial tasks.
 - Always produce a plan after complete intake. In `human_in_loop`, make it an approval packet and stop for approval. In `autonomous_goal`, make it an execution plan and continue only when the completed intake authorizes that path.
-- Do not begin implementation until complete intake and the path gate are satisfied, at least one concrete dossier exists, and no stop gate applies.
-- Delegate workers only through an automated supported delegation transport after complete intake and the path gate authorize delegation. If no supported transport exists, use same-session phased mode only when intake allowed it; otherwise stop as `delegation_unavailable`.
+- Do not begin implementation until complete intake and the path gate are satisfied, at least one work unit exists, at least one concrete dossier exists, worker-agent contracts exist, and no stop gate applies.
+- Delegate workers only through an automated supported delegation transport after complete intake and the path gate authorize delegation. If no supported transport exists, use same-session phased mode only when intake allowed it; otherwise stop as `worker_agent_unavailable`.
 - Do not start implementer, verifier, repair-author, or documenter workers before complete intake and the path gate are satisfied; role-specific start conditions are additional gates after that.
 - Keep roles separate: implementers implement, verifiers verify, repair authors write tickets, documenters update workflow artifacts, and the supervisor coordinates.
-- Treat same-session verification as a self-check, not independent verification.
+- Treat same-session verification as a self-check, not independent verification. Separate verifier-agent verification may be labeled `independent-verifier` only when genuinely performed by a separate worker agent or thread.
 - Prefer explicit PASS/FAIL/BLOCKED states over soft completion language.
 - Stop instead of improvising when sources are missing, contradictory, materially stale, or too vague to produce acceptance criteria.
 - Keep provenance optional; require enough outcome detail for another agent to resume.
@@ -64,7 +88,29 @@ Treat these as distinct mechanisms:
 - Native thread or subagent: an environment-specific transport a worker adapter may use when it is available and authorized.
 - Same-session phased mode: the current agent performs roles sequentially. Verification in this mode is a self-check, not independent verification.
 
-Start workers only after complete intake and the path gate are satisfied, a concrete dossier exists, the loop policy authorizes delegation, and the environment exposes an automated supported transport. If environment rules require explicit user approval for user-visible native thread creation, obtain it before using that transport. Do not use manual copy/paste handoff as the primary path. If automated delegation is unavailable, mark the unit `delegation_unavailable` unless completed intake explicitly selected same-session phased work.
+Start workers only after complete intake and the path gate are satisfied, at least one work unit exists, a concrete dossier exists, the loop policy authorizes delegation, and the environment exposes an automated supported transport. If environment rules require explicit user approval for user-visible native thread creation, obtain it before using that transport. Do not use manual copy/paste handoff as the primary path. If automated delegation is unavailable, mark the unit `worker_agent_unavailable` unless completed intake explicitly selected same-session phased work.
+
+## Worker Report Schema
+
+Every worker report back to the supervisor must use this schema:
+
+```text
+status: PASS | FAIL | BLOCKED | PARTIAL
+worker_id:
+role: implementer | verifier | repair-author | documenter
+work_unit_id:
+dossier_id:
+summary:
+changed_files:
+acceptance_evidence:
+checks_run:
+skipped_checks:
+blockers:
+residual_risks:
+next_recommended_action:
+```
+
+Implementers may edit only allowed surfaces from the dossier. Verifiers must not edit. Repair authors write repair tickets from failed acceptance rows and must not expand scope. Documenters update only approved workflow or documentation surfaces after source, implementation, verification, or repair evidence exists.
 
 ## Intake Gate
 
@@ -81,6 +127,8 @@ Required intake decisions:
 - Final disposition: `keep_local_when_green`, `open_pr_when_green`, `push_main_when_green`, `deploy_when_green`, `publish_when_green`, or `ask_at_end`.
 - Mutation boundaries: local files, dependency installs, network calls, external services, credentials, destructive operations, and any forbidden surfaces.
 - State artifacts: whether to create workflow docs under `<workspace>/.workflow/`, use another named artifact directory, or keep state inline.
+
+If the completed intake selects `.workflow/` state artifacts in a Git-backed codebase, ensure `<workspace>/.gitignore` contains `.workflow/` before creating those artifacts. Create `.gitignore` if needed. Treat `.workflow/` as local supervisor memory that must not be staged, committed, pushed, or included in a PR unless the user explicitly names workflow state as a final deliverable.
 
 Use this question shape for the first intake ask:
 
@@ -107,28 +155,29 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 2. Restate the objective, constraints, non-goals, known sources, and unknowns from the completed intake.
 3. Bind or reconcile the Codex goal only after complete intake and only when no unrelated active goal prevents binding.
 4. Build or request a source corpus map. Use `$source-corpus` when source authority, freshness, or contradictions matter.
-5. Split the objective into bounded work units. Use `$work-unit` for ambiguous or multi-phase goals.
+5. Split the objective into bounded work units. Use `$work-unit` for ambiguous or multi-phase goals. If the task is tiny, create exactly one work unit named `WU-001`.
 6. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
 7. Build dossiers for the first implementation units and any planned verification, repair, or documentation workers. Use `$dossier-builder` when delegating work to another agent or when the task has boundaries.
 8. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent, native-thread, or portable-worker work.
 9. Select the execution path:
    - `human_in_loop`: use when selected in completed intake or when a higher-priority rule requires human approval after intake.
    - `autonomous_goal`: use only when selected in completed intake and no higher-priority rule requires human approval.
-10. Present the path-specific plan:
+10. If `.workflow/` artifacts will be used in a Git-backed codebase, ensure `.gitignore` contains `.workflow/` before writing them.
+11. Present the path-specific plan:
    - `human_in_loop`: approval packet with plan, work units, worker delegation plan, approval gates, stop gates, and first dossiers. Stop until the human approves or revises it.
    - `autonomous_goal`: execution plan with the same contents plus autonomous boundaries, allowed actions, stop gates, repair limits, and final disposition policy. Continue after recording it only when complete intake authorized that path.
-11. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
-12. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits.
-13. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
-14. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
-15. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
-16. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
-17. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
-18. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
-19. When all material acceptance rows are PASS or waived, apply the final disposition policy:
+12. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
+13. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits.
+14. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
+15. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
+16. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
+17. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
+18. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
+19. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
+20. When all material acceptance rows are PASS or waived, apply the final disposition policy:
    - `human_in_loop`: use the completed intake final disposition; if it is `ask_at_end`, ask the human to choose PR, push main, or keep local.
    - `autonomous_goal`: use the completed intake final disposition. If it is `ask_at_end`, stop and ask before taking any final disposition action.
-20. Finish with an outcome report that names execution path, goal status, sources, work units, delegated workers, checks, skipped checks, residual risks, final disposition decision, and next action.
+21. Finish with an outcome report that names execution path, goal status, sources, work units, delegated workers, checks, skipped checks, residual risks, final disposition decision, and next action.
 
 ## Execution Paths
 
@@ -181,7 +230,7 @@ workflow-supervisor validate-dossier <path> --role <role> --unit <unit-id> --jso
 
 If the dossier does not pass `DossierV1` validation, do not start the worker. Create a discovery dossier, ask for the missing decision, or mark the unit BLOCKED.
 
-Adapters may use native threads, native subagents, or one-shot CLI execution underneath, but the supervisor consumes only the normalized worker report. Use `workflow-supervisor delegate-doctor --agent <agent> --probe` to test the installed local adapter before relying on it for a workflow. If automated delegation is unavailable, mark execution as `delegation_unavailable` unless completed intake selected `same_session_phased`.
+Adapters may use native threads, native subagents, or one-shot CLI execution underneath, but the supervisor consumes only the normalized worker report. Use `workflow-supervisor delegate-doctor --agent <agent> --probe` to test the installed local adapter before relying on it for a workflow. If automated delegation is unavailable, mark execution as `worker_agent_unavailable` unless completed intake selected `same_session_phased`.
 
 Name workers deterministically from the workflow, unit, role, and dossier:
 
@@ -244,6 +293,7 @@ Stop when:
 - source authority cannot be established
 - sources contradict each other on a material requirement
 - the requested scope cannot fit into a bounded work unit
+- mandatory approval packet, work unit, dossier, worker-agent contract, or acceptance matrix is missing
 - allowed and forbidden surfaces cannot be named
 - acceptance cannot be verified with evidence
 - a verifier is asked to edit or an implementer is asked to self-approve
@@ -264,7 +314,10 @@ Report:
 - Objective handled
 - Sources used and gaps
 - Work units completed or remaining
+- Approval question id and whether `WAITING_FOR_HUMAN -> ACTIVE` occurred
+- Dossiers created or missing
 - Workers delegated, blocked, unavailable, or skipped
+- Worker lifecycle status for each role
 - Verification evidence
 - Repairs performed or recommended
 - Checks run and skipped

@@ -66,6 +66,17 @@ test("workflow-supervisor contract requires complete intake before work starts",
   assert.match(skillText, /Classify the workflow as `autonomous_goal` or `human_in_loop` only from completed intake answers/);
 });
 
+test("workflow-supervisor explicit invocation requires strict worker-agent workflow", () => {
+  assert.match(skillText, /strict_full_workflow/);
+  assert.match(skillText, /Task size is irrelevant/);
+  assert.match(skillText, /At least one bounded work unit, even for a tiny change/);
+  assert.match(skillText, /worker-agent plan with implementer, verifier, repair-author, and documenter agents/);
+  assert.match(skillText, /planned -> handed_off -> acknowledged -> reported -> verified -> closed/);
+  assert.match(skillText, /Do not silently collapse worker agents into same-session work/);
+  assert.match(skillText, /Every worker report back to the supervisor must use this schema/);
+  assert.match(skillText, /role: implementer \| verifier \| repair-author \| documenter/);
+});
+
 test("workflow-supervisor documents the complete intake question", () => {
   assert.match(skillText, /Before I start the supervisor loop, answer every intake item:/);
   assert.match(skillText, /1\. Objective and source: what artifact, spec, repo path, document, ticket, or source set controls the work\?/);
@@ -84,6 +95,12 @@ test("workflow-supervisor intake does not offer manual handoff prompts as a dele
   assert.doesNotMatch(skillText, /handoff_prompts_only/);
   assert.doesNotMatch(skillText, /same_thread_only/);
   assert.match(skillText, /Do not use manual copy\/paste handoff as the primary path/);
+});
+
+test("workflow-supervisor keeps .workflow state out of git by default", () => {
+  assert.match(skillText, /ensure `<workspace>\/\.gitignore` contains `\.workflow\/` before creating those artifacts/);
+  assert.match(skillText, /must not be staged, committed, pushed, or included in a PR unless the user explicitly names workflow state as a final deliverable/);
+  assert.match(skillText, /ensure `\.gitignore` contains `\.workflow\/` before writing them/);
 });
 
 test("OpenAI metadata prompt preserves complete intake behavior", () => {

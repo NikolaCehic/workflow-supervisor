@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, "..");
 const PACKAGE_NAME = "workflow-supervisor";
-const PACKAGE_VERSION = "0.1.0";
+const PACKAGE_VERSION = "0.1.1";
 const WORKER_REPORT_SCHEMA_PATH = path.join(packageRoot, "schemas", "worker-report-v1.schema.json");
 const DOSSIER_SCHEMA_PATH = path.join(packageRoot, "schemas", "dossier-v1.schema.json");
 const ADAPTERS_ROOT = path.join(packageRoot, "adapters");
@@ -18,6 +18,7 @@ const AGENTS = new Set([...INSTALLABLE_AGENTS, "generic"]);
 const DELEGATE_AGENTS = new Set(["codex", "claude-code"]);
 const WORKER_ROLES = new Set(["implementer", "verifier", "repair", "documenter"]);
 const REPORT_STATUSES = new Set(["PASS", "FAIL", "BLOCKED"]);
+const WORKFLOW_STATE_IGNORE_ENTRY = ".workflow/";
 
 function usage() {
   return `workflow-supervisor
@@ -135,6 +136,34 @@ function defaultTarget(agent, { scope = "user", project = process.cwd() } = {}) 
 
 function readText(file) {
   return fs.readFileSync(file, "utf8");
+}
+
+function workflowStateAlreadyIgnored(text) {
+  return text.split(/\r?\n/).some((line) => {
+    const trimmed = line.trim();
+    return trimmed === WORKFLOW_STATE_IGNORE_ENTRY || trimmed === ".workflow" || trimmed === ".workflow/**";
+  });
+}
+
+function ensureWorkflowStateIgnored(project, dryRun = false) {
+  const projectRoot = path.resolve(expandHome(project || process.cwd()));
+  const file = path.join(projectRoot, ".gitignore");
+  const existing = fs.existsSync(file) ? readText(file) : "";
+  const alreadyPresent = workflowStateAlreadyIgnored(existing);
+  const result = {
+    file,
+    entry: WORKFLOW_STATE_IGNORE_ENTRY,
+    changed: !alreadyPresent,
+    alreadyPresent,
+    dryRun: Boolean(dryRun),
+  };
+
+  if (alreadyPresent || dryRun) return result;
+
+  fs.mkdirSync(projectRoot, { recursive: true });
+  const separator = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  fs.writeFileSync(file, `${existing}${separator}${WORKFLOW_STATE_IGNORE_ENTRY}\n`);
+  return result;
 }
 
 function parseFrontmatter(text) {
@@ -333,6 +362,8 @@ Use these skills explicitly for supervised, long-running, or delegation-heavy wo
 ${skillLines.join("\n")}
 
 Do not use this pack for tiny direct tasks, ordinary README edits, one-off tests, or routine review unless a supervised workflow or durable continuation state is explicitly needed.
+
+In Git-backed codebases, keep workflow state local: ensure \`.workflow/\` is listed in \`.gitignore\` before creating workflow artifacts, and do not stage or publish \`.workflow/\` unless the user explicitly makes it a deliverable.
 `;
 }
 
@@ -352,6 +383,8 @@ function portableContextFor(root, agent, target, names) {
     ...names.map((name) => `- \`$${name}\`: ${skillSummary(name)}.`),
     "",
     "Do not use this pack for tiny direct tasks, ordinary README edits, one-off tests, or routine review unless a supervised workflow or durable continuation state is explicitly needed.",
+    "",
+    "In Git-backed codebases, keep workflow state local: ensure `.workflow/` is listed in `.gitignore` before creating workflow artifacts, and do not stage or publish `.workflow/` unless the user explicitly makes it a deliverable.",
     "",
   ];
 
@@ -1338,6 +1371,7 @@ function writeManifest(target, data, dryRun) {
 function installOne(args, agent) {
   const root = path.resolve(expandHome(args.root || packageRoot));
   const scope = normalizeScope(args.scope || "user");
+  const project = scope === "project" ? path.resolve(expandHome(args.project || process.cwd())) : null;
   const target = resolveTarget(args, agent);
   const names = selectSkills(root, args.skills || "all");
   const dryRun = Boolean(args["dry-run"]);
@@ -1351,6 +1385,7 @@ function installOne(args, agent) {
   }
 
   if (!dryRun) fs.writeFileSync(path.join(target, "WORKFLOW_SKILL_PACK.md"), contextFor(agent, target, names));
+  const workflowGitignore = project ? ensureWorkflowStateIgnored(project, dryRun) : null;
   writeManifest(
     target,
     {
@@ -1358,15 +1393,16 @@ function installOne(args, agent) {
       version: PACKAGE_VERSION,
       agent,
       scope,
-      project: scope === "project" ? path.resolve(expandHome(args.project || process.cwd())) : null,
+      project,
       target,
       installedAt: new Date().toISOString(),
+      workflowGitignore,
       skills: installed,
     },
     dryRun
   );
 
-  return { agent, target, skills: names, dryRun };
+  return { agent, target, skills: names, dryRun, workflowGitignore };
 }
 
 function install(args) {
@@ -1435,6 +1471,11 @@ function printInstallResults(results, verb) {
   const pastTense = verb === "remove" ? "Removed" : "Installed";
   for (const result of results) {
     console.log(`${result.dryRun ? `Would ${verb}` : pastTense} ${result.skills.length} skills for ${result.agent} at ${result.target}`);
+    if (result.workflowGitignore) {
+      const { file, entry, changed } = result.workflowGitignore;
+      const action = result.dryRun && changed ? "Would add" : changed ? "Added" : "Already ignores";
+      console.log(`${action} ${entry} in ${file}`);
+    }
   }
 }
 
