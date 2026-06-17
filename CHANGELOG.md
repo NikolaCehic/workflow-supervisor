@@ -68,7 +68,7 @@ Commit: `ee4c02b`
 
 Published to npm: 2026-06-14 23:35:57 UTC
 
-Source: npm tarball contents. The GitHub release tag for this version should be a reconstructed source snapshot from the npm tarball because no exact matching commit exists in the branch history for this first publish.
+Source: npm tarball contents. The GitHub release tag for this version is a reconstructed source snapshot from the npm tarball because no exact matching commit exists in the branch history for this first publish.
 
 ### Added
 
