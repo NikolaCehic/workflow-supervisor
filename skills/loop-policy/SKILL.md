@@ -21,7 +21,8 @@ For loop-oriented supervisor work, define how the workflow uses Codex goals afte
 - goal_state_mirror_cadence: each work unit, each verification result, each repair loop, and final outcome
 - goal_completion_rule: evidence required before completion
 - goal_blocked_rule: same material blocker across the required consecutive goal turns and no meaningful progress
-- goal_resume_rule: read active goal before workflow docs, then reconcile
+- goal_resume_rule: read active goal before workflow docs, reconcile state, and continue from the recorded next action after human decisions
+- human_decision_resume_rule: ask the smallest blocking decision, update state, invalidate only affected downstream artifacts, and resume without restarting intake unless intake changed
 
 Do not create goals for small direct tasks. A goal is the state container for open-ended loops, not a wrapper around every command.
 
@@ -36,7 +37,7 @@ Do not create goals for small direct tasks. A goal is the state container for op
 - Budget: time, token, command, cost, or file-change limits.
 - Escalation: when to ask the user, delegate to a specialist worker, or stop.
 - Completion: evidence required before marking done.
-- Resume: artifacts needed before pausing or compacting.
+- Resume: artifacts needed before pausing, compacting, or waiting for a human decision.
 - Mutation conflict: whether units touch the same mutable surfaces or decisions.
 
 ## Default Policy
@@ -63,6 +64,7 @@ workflow_unit_blocked_after: first material blocker may stop the unit while the 
 codex_goal_blocked_after: same material blocker across 3 consecutive goal turns and no meaningful progress
 completion_requires: acceptance evidence plus residual risk report
 resume_requires: workflow state or outcome doc for long workflows
+human_decision_resume_rule: record blocker and next action before asking; after answer, update Q&A/decision/coverage state, re-run only affected downstream steps, invalidate stale artifacts, and continue from recorded next action
 missing_prerequisites: discovery-first, not failure
 goal_start: after complete intake only; create only when completed intake and environment authorize goal binding, otherwise mirror state in docs
 goal_state_mirror_cadence: after unit terminal states and final outcome
@@ -98,6 +100,7 @@ escalation_rules:
 stop_gates:
 completion_rule:
 resume_artifacts:
+human_decision_resume_rule:
 goal_policy:
 final_disposition_policy:
 ```

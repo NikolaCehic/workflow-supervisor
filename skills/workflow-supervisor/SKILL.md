@@ -17,13 +17,14 @@ Strict mode always requires:
 2. A human approval question before implementation unless completed intake explicitly selects `autonomous_goal`.
 3. A source corpus map, even if the source corpus is only "user prompt plus current workspace".
 4. A source-requirement coverage ledger before work-unit finalization.
-5. At least one bounded work unit, even for a tiny change. Use `WU-001` when there is only one unit.
-6. A dossier for each implementation work unit before implementation begins.
-7. An acceptance matrix or acceptance draft with evidence expectations before implementation begins.
-8. A worker-agent plan with implementer, verifier, repair-author, and documenter agents.
-9. A worker lifecycle record using `planned -> handed_off -> acknowledged -> reported -> verified -> closed`.
-10. Verification labeled as `self-check`, `focused-check`, or `independent-verifier`.
-11. A final disposition question or recorded completed-intake final disposition after verification.
+5. A SPEC review packet or `.workflow/SPEC.md` before work-unit finalization.
+6. At least one bounded work unit, even for a tiny change. Use `WU-001` when there is only one unit.
+7. A dossier for each implementation work unit before implementation begins.
+8. An acceptance matrix or acceptance draft with evidence expectations before implementation begins.
+9. A worker-agent plan with implementer, verifier, repair-author, and documenter agents.
+10. A worker lifecycle record using `planned -> handed_off -> acknowledged -> reported -> verified -> closed`.
+11. Verification labeled as `self-check`, `focused-check`, or `independent-verifier`.
+12. A final disposition question or recorded completed-intake final disposition after verification.
 
 Worker agents are mandatory when the environment provides worker, subagent, thread, or portable delegation tools. The supervisor must hand off implementation, verification, repair-authoring when needed, and documentation to separate agents with scoped dossiers and the required report schema. Run worker agents sequentially by default unless completed intake explicitly authorizes parallelism.
 
@@ -63,6 +64,34 @@ Create exactly one implementation work unit only when all current-scope material
 
 Before final closeout, audit the coverage ledger. The workflow may be PASS only when every material requirement is mapped to a PASS acceptance row, explicitly waived by the user, or blocked and reported as not complete.
 
+## SPEC Review And Q&A Gate
+
+Before final work units, create a concise reviewable spec as `.workflow/SPEC.md` when workflow docs are enabled, or as an inline SPEC review packet when state is inline. The SPEC is the human-readable contract for interpretation, not the execution plan.
+
+The SPEC must include:
+
+- status: `Draft`, `Approved`, `Needs Revision`, or `Blocked`
+- objective and non-goals
+- source of truth summary
+- interpreted scope
+- requirement coverage ledger or summary
+- deferred, out-of-scope, and blocked items
+- proposed work units summary
+- acceptance summary
+- assumptions, risks, and open questions
+- Q&A log
+- human verification decision with reviewer, decision, notes, and date when known
+
+In `human_in_loop`, stop after presenting the draft SPEC and ask for review. The human may ask questions, request revisions, block, defer requirements, change dispositions, or approve. Continue to final work units, dossiers, or implementation only after the SPEC has `Decision: Approved` or an equivalent explicit approval in the conversation.
+
+If the human asks questions, answer them and update the Q&A log before proceeding. If the answers change scope, sources, dispositions, work units, or acceptance, revise the SPEC and ask for approval again. If the human marks `Needs Revision`, revise and re-present. If the human marks `Blocked`, stop and record the blocker.
+
+In `autonomous_goal`, create or record the SPEC and continue only when no blocking questions remain and no higher-priority instruction requires approval. Do not fabricate human approval; use `Approval: not required by autonomous_goal intake` or equivalent wording instead.
+
+Agents may propose dispositions such as `proposed_current_scope` or `proposed_deferred`, but only explicit user approval may convert them into `in_current_scope`, `explicit_user_deferred`, or `out_of_scope_by_user` when the distinction changes scope. Keep proposed agent interpretation separate from final human decisions.
+
+If `autonomous_goal` finds a blocking question or human decision point, use Resume After Human Decision instead of treating the autonomous path as failed. Autonomous execution may pause for the smallest necessary decision and then continue from the saved checkpoint after the human answers.
+
 ## Codex Goal Lifecycle
 
 This skill is loop-oriented. Complete intake is mandatory before goal binding. After all required intake decisions are answered, bind the workflow to a Codex goal only when the completed intake and governing environment both authorize goal-oriented work.
@@ -80,9 +109,30 @@ Use this lifecycle:
 9. Use `update_goal` only for terminal `complete` or `blocked` states when the environment supports that action.
 10. Mark the goal complete only after acceptance evidence supports completion and no required supervisor work remains.
 11. Distinguish workflow/unit BLOCKED from Codex goal blocked. Mark a Codex goal blocked only after the same material blocker repeats across the required consecutive goal turns and no meaningful progress remains.
-12. On resume after compaction or continuation, read the active goal first, then reconcile workflow docs and current artifacts.
+12. On resume after compaction, continuation, or human answer, read the active goal first, then reconcile workflow docs and current artifacts.
+13. If the prior Codex goal is terminal `blocked old`, do not assume it can be reopened. Continue from workflow state when safe; create or reuse a new active workflow state only when complete intake still authorizes goal binding, and reference the old blocked goal as history.
 
 If the environment has no goal tool or goal creation is not permitted, state the intended goal objective in the supervisor report and continue with workflow docs or another state artifact as the fallback state container.
+
+## Resume After Human Decision
+
+Use this protocol when `autonomous_goal` or another supervised path stops to ask a human for clarification, scope disposition, approval, waiver, final disposition, or any other blocking decision.
+
+Before asking the human:
+
+- Record the blocker in `.workflow/SPEC.md`, `.workflow/WORKFLOW.md`, `.workflow/GOAL-STATE.md`, or the inline state packet. Include the blocked artifact, exact question, affected requirement ids, affected work units, last completed step, and recorded next action.
+- Ask the smallest decision that can unblock progress. Do not re-ask complete intake unless a required intake decision is missing, contradicted, or directly changed by the blocker.
+- Mark the workflow, SPEC item, unit, or worker as waiting or blocked. Do not mark the Codex goal terminal `blocked` for a first material blocker when meaningful progress can continue after the human answers.
+
+When the human answers:
+
+- Classify the answer as one or more of: clarification, scope change, requirement waiver, explicit deferral, blocker resolution, final disposition, intake change, or workflow cancellation.
+- Update the SPEC Q&A log, requirement coverage dispositions, decision source, and any `DECISIONS.md`, `WORKFLOW.md`, or `GOAL-STATE.md` resume fields before continuing.
+- Do not restart intake unless the answer changes a required intake decision: objective/source, execution path, mode, delegation, final disposition, mutation boundaries, or state artifacts. If it does, ask only the affected intake item(s), then resume.
+- Re-run only the affected downstream steps: source coverage, SPEC, work-unit split, acceptance rows, dossiers, worker plan, verification, or final disposition. Preserve unaffected completed units and evidence.
+- Invalidate stale work units, acceptance rows, dossiers, or worker reports whose assumptions changed. Do not reuse them as green evidence.
+- Continue from the recorded `Next Action`. If the recorded next action is missing, derive the next action from the latest non-terminal workflow artifact and state the derivation in the report.
+- If the old Codex goal is still active and relevant, reuse it. If it is terminal `blocked old` and cannot be reopened, reference it as history and continue with workflow docs or a newly authorized goal binding.
 
 ## Operating Contract
 
@@ -103,6 +153,7 @@ If the environment has no goal tool or goal creation is not permitted, state the
 - Stop instead of improvising when sources are missing, contradictory, materially stale, or too vague to produce acceptance criteria.
 - Treat unimplemented material source requirements found in residual risks, skipped checks, future work, or `next_recommended_action` as open work, not PASS evidence.
 - Keep provenance optional; require enough outcome detail for another agent to resume.
+- When resuming after a human decision, update state first, invalidate changed downstream artifacts, and continue from the recorded next action instead of restarting the whole workflow.
 - Treat companion skills as optional phase tools, not an automatic cascade. Use the smallest set needed for the current risk.
 
 ## Skills And Workers
@@ -185,30 +236,32 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 3. Bind or reconcile the Codex goal only after complete intake and only when no unrelated active goal prevents binding.
 4. Build or request a source corpus map. Use `$source-corpus` when source authority, freshness, or contradictions matter.
 5. Create the source-requirement coverage ledger. If any material source requirement cannot be classified, mapped to work, or explicitly deferred, stop and ask for the missing scope decision.
-6. Split the objective into bounded work units from the coverage ledger. Use `$work-unit` for ambiguous or multi-phase goals. If the task is tiny and the ledger has no deferred material requirements, create exactly one work unit named `WU-001`.
-7. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
-8. Build dossiers for the first implementation units and any planned verification, repair, or documentation workers. Use `$dossier-builder` when delegating work to another agent or when the task has boundaries.
-9. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent, native-thread, or portable-worker work.
-10. Select the execution path:
+6. Create the SPEC review packet or `.workflow/SPEC.md` from the source corpus and coverage ledger.
+7. Run the SPEC Q&A gate. In `human_in_loop`, stop until the human asks questions, receives answers or revisions, and explicitly approves the SPEC. In `autonomous_goal`, continue only when no blocking questions remain and approval is not required by intake.
+8. Split the objective into bounded work units from the approved or non-blocked SPEC and coverage ledger. Use `$work-unit` for ambiguous or multi-phase goals. If the task is tiny and the ledger has no deferred material requirements, create exactly one work unit named `WU-001`.
+9. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
+10. Build dossiers for the first implementation units and any planned verification, repair, or documentation workers. Use `$dossier-builder` when delegating work to another agent or when the task has boundaries.
+11. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent, native-thread, or portable-worker work.
+12. Select the execution path:
    - `human_in_loop`: use when selected in completed intake or when a higher-priority rule requires human approval after intake.
    - `autonomous_goal`: use only when selected in completed intake and no higher-priority rule requires human approval.
-11. If `.workflow/` artifacts will be used in a Git-backed codebase, ensure `.gitignore` contains `.workflow/` before writing them.
-12. Present the path-specific plan:
+13. If `.workflow/` artifacts will be used in a Git-backed codebase, ensure `.gitignore` contains `.workflow/` before writing them.
+14. Present the path-specific plan:
    - `human_in_loop`: approval packet with plan, work units, worker delegation plan, approval gates, stop gates, and first dossiers. Stop until the human approves or revises it.
    - `autonomous_goal`: execution plan with the same contents plus autonomous boundaries, allowed actions, stop gates, repair limits, and final disposition policy. Continue after recording it only when complete intake authorized that path.
-13. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
-14. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits.
-15. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
-16. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
-17. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
-18. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
-19. If verification BLOCKs, report the blocker and stop or ask for the missing decision.
-20. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
-21. Audit skipped checks, residual risks, future work, and next recommended actions against the source-requirement coverage ledger. If any material source requirement appears there without an explicit user deferral or waiver, mark the workflow FAIL/BLOCKED and create more work units or ask for a scope decision.
-22. When all material acceptance rows are PASS or waived, apply the final disposition policy:
+15. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema.
+16. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits.
+17. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
+18. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
+19. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
+20. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
+21. If verification BLOCKs, record the resume checkpoint, report the blocker, and stop or ask for the missing decision. When the human answers, use Resume After Human Decision.
+22. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
+23. Audit skipped checks, residual risks, future work, and next recommended actions against the source-requirement coverage ledger. If any material source requirement appears there without an explicit user deferral or waiver, mark the workflow FAIL/BLOCKED and create more work units or ask for a scope decision.
+24. When all material acceptance rows are PASS or waived, apply the final disposition policy:
    - `human_in_loop`: use the completed intake final disposition; if it is `ask_at_end`, ask the human to choose PR, push main, or keep local.
    - `autonomous_goal`: use the completed intake final disposition. If it is `ask_at_end`, stop and ask before taking any final disposition action.
-23. Finish with an outcome report that names execution path, goal status, sources, coverage ledger disposition, work units, delegated workers, checks, skipped checks, residual risks, final disposition decision, and next action.
+25. Finish with an outcome report that names execution path, goal status, sources, SPEC decision, coverage ledger disposition, work units, delegated workers, checks, skipped checks, residual risks, final disposition decision, and next action.
 
 ## Execution Paths
 
@@ -216,11 +269,12 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 
 Use `human_in_loop` when the completed intake selects it, or when a higher-priority rule requires human approval after intake. If the user has not answered the execution-path intake item, stop and ask for that answer instead of inferring a path.
 
-The first supervisor deliverable is a plan for approval, not implementation. The approval packet must include:
+The first review deliverable after source coverage is the SPEC review packet, not implementation. After the SPEC Q&A gate is approved, the supervisor presents the implementation approval packet. The approval packet must include:
 
 - objective and non-goals
 - source corpus summary and gaps
 - source-requirement coverage ledger summary
+- SPEC review status, Q&A summary, and decision
 - work units and sequence
 - worker delegation plan with names, roles, dossiers, dependencies, start conditions, and transport
 - acceptance matrix summary
@@ -236,6 +290,7 @@ Use `autonomous_goal` only when the completed intake selects it. Phrases such as
 - objective and non-goals
 - source corpus summary and gaps
 - source-requirement coverage ledger summary
+- SPEC review status, Q&A summary, and approval policy
 - work units and sequence
 - worker delegation plan with names, roles, dossiers, dependencies, start conditions, and transport
 - acceptance matrix summary
@@ -246,6 +301,8 @@ Use `autonomous_goal` only when the completed intake selects it. Phrases such as
 The final disposition must come from the completed intake. Direct push to the main branch, PR creation, deploy, publication, paid operations, production data changes, credential use, and destructive operations require explicit answers in the relevant intake fields.
 
 Even in `autonomous_goal`, stop and ask when any required intake answer is missing or ambiguous, required sources are missing, acceptance cannot be verified, a worker needs scope expansion, an irreversible action lacks intake authorization, or higher-priority instructions require approval.
+
+When `autonomous_goal` stops for a human decision, it should usually leave the Codex goal active and mark only the workflow artifact, SPEC item, work unit, or worker as waiting or blocked. After the human answers, resume from the recorded next action and refresh only the affected downstream artifacts.
 
 ## Portable Worker Delegation
 
@@ -327,6 +384,8 @@ Stop when:
 - sources contradict each other on a material requirement
 - the requested scope cannot fit into a bounded work unit
 - the coverage ledger is missing, incomplete, or contains material requirements classified as future work without explicit user deferral
+- human-in-loop SPEC approval is missing, marked Needs Revision, marked Blocked, or has unanswered Q&A
+- a human decision was answered but affected downstream coverage, SPEC, work units, acceptance, dossiers, or verification have not been refreshed
 - mandatory approval packet, work unit, dossier, worker-agent contract, or acceptance matrix is missing
 - allowed and forbidden surfaces cannot be named
 - acceptance cannot be verified with evidence
@@ -348,9 +407,11 @@ Report:
 - Goal status and whether a Codex goal was created, reused, skipped, completed, or blocked
 - Objective handled
 - Sources used and gaps
+- SPEC status, Q&A summary, and human decision or autonomous approval policy
 - Source-requirement coverage ledger summary, including deferred or blocked material requirements
 - Work units completed or remaining
 - Approval question id and whether `WAITING_FOR_HUMAN -> ACTIVE` occurred
+- Human decision resume status, affected artifacts, and whether stale downstream artifacts were invalidated
 - Dossiers created or missing
 - Workers delegated, blocked, unavailable, or skipped
 - Worker lifecycle status for each role

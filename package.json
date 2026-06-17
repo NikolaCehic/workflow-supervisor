@@ -1,6 +1,6 @@
 {
   "name": "workflow-supervisor",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Portable workflow supervision skills for Codex, Claude Code, and generic agent workspaces.",
   "type": "module",
   "repository": {

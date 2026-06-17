@@ -62,6 +62,7 @@ For documentation work, start with `DOCUMENTATION-BRIEF.md` unless the user prov
 
 - `.workflow/WORKFLOW.md`: overall objective, policy, state, units, and next action.
 - `.workflow/SOURCE-CORPUS.md`: source map, authority ranking, contradictions, gaps.
+- `.workflow/SPEC.md`: human-reviewable interpretation contract, requirement coverage, Q&A, and approval decision before final work units.
 - `.workflow/WORK-UNITS.md`: decomposition and sequencing.
 - `.workflow/DOSSIER.md`: delegation contract for one unit.
 - `.workflow/WORKER-MAP.md`: worker names, roles, transports, dossiers, dependencies, start conditions, report status, and supervisor checkpoints.
@@ -71,7 +72,7 @@ For documentation work, start with `DOCUMENTATION-BRIEF.md` unless the user prov
 - `.workflow/DECISIONS.md`: durable decisions, assumptions, and reversals.
 - `.workflow/HANDOFF.md`: resume state for another agent or session.
 - `.workflow/OUTCOME.md`: final status, checks, risks, and next step.
-- `.workflow/GOAL-STATE.md`: optional fallback record when a Codex goal tool is unavailable or goal state must be mirrored for continuation.
+- `.workflow/GOAL-STATE.md`: optional fallback or mirror for Codex goal state, terminal blocked-goal history, and human-decision resume checkpoints.
 - `.workflow/DOCUMENTATION-BRIEF.md`: audience, purpose, document type, reader task, channel, owner, approvers, and success criteria.
 - `.workflow/CONTENT-INVENTORY.md`: existing materials, reusable sections, gaps, stale areas, and owners.
 - `.workflow/OUTLINE.md`: information architecture, section hierarchy, and required content.

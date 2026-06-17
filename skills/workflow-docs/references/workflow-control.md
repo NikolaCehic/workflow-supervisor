@@ -38,6 +38,21 @@ Git rule: in a Git-backed codebase, ensure `<workspace>/.gitignore` contains `.w
 
 ## Stop Gates
 
+## Blocking Decision
+
+| ID | Blocked Artifact | Question | Affected Requirements | Affected Work Units | Status | Answer Source |
+|---|---|---|---|---|---|---|
+
+## Resume Checkpoint
+
+Last Completed Step:
+
+Next Action:
+
+Artifacts To Refresh:
+
+Stale Artifacts Invalidated:
+
 ## Next Action
 ```
 
@@ -63,6 +78,80 @@ Git rule: in a Git-backed codebase, ensure `<workspace>/.gitignore` contains `.w
 ## Assumptions And Inferences
 
 ## Allowed Next Action
+```
+
+## SPEC.md
+
+```md
+# SPEC
+
+Status: Draft | Approved | Needs Revision | Blocked
+
+## Objective
+
+## Source Of Truth
+
+| Source | Role | Notes |
+|---|---|---|
+
+## Interpreted Scope
+
+## Non-Goals
+
+## Requirement Coverage
+
+| ID | Source Ref | Requirement | Proposed Disposition | Final Disposition | Decision Source | Work Unit | Acceptance Row |
+|---|---|---|---|---|---|---|---|
+
+## Deferred, Out-Of-Scope, Or Blocked Items
+
+| ID | Requirement | Status | Reason | Needed Decision |
+|---|---|---|---|---|
+
+## Proposed Work Units
+
+| Work Unit | Objective | Depends On | Verification |
+|---|---|---|---|
+
+## Acceptance Summary
+
+## Assumptions And Risks
+
+## Open Questions
+
+| ID | Question | Asked By | Answer | Status |
+|---|---|---|---|---|
+
+## Q&A Log
+
+| ID | Question | Answer | Spec Change Required | Status |
+|---|---|---|---|---|
+
+## Resume Checkpoint
+
+Blocked At:
+
+Required Human Decision:
+
+Affected Requirement IDs:
+
+Affected Work Units:
+
+Next Action After Answer:
+
+Artifacts To Refresh:
+
+Stale Artifacts Invalidated:
+
+## Human Verification
+
+Reviewer:
+
+Decision: Approved | Needs Revision | Blocked
+
+Decision Source:
+
+Notes:
 ```
 
 ## WORK-UNITS.md
@@ -247,6 +336,66 @@ Acceptance Criteria:
 ## Blockers
 
 ## Next Recommended Action
+```
+
+## GOAL-STATE.md
+
+```md
+# Goal State
+
+## Objective
+
+## Goal Binding
+
+created | reused | skipped | unavailable | conflict
+
+## Goal Status
+
+active | complete | blocked | blocked old | unknown
+
+## Previous Blocked Goal
+
+Goal Reference:
+
+Reason:
+
+Use As History Only: yes | no
+
+## Last Tool Action
+
+get_goal | create_goal | update_goal | none
+
+## Next Allowed Goal Action
+
+## Last Completed Step
+
+## Current Work Unit
+
+## Current Blocker
+
+## Human Decision Needed
+
+Question:
+
+Smallest Sufficient Answer:
+
+## Human Decision Answer
+
+Answer:
+
+Decision Type: clarification | scope change | requirement waiver | explicit deferral | blocker resolution | final disposition | intake change | workflow cancellation
+
+## Resume Checkpoint
+
+Next Action:
+
+Artifacts To Refresh:
+
+Stale Artifacts Invalidated:
+
+## Completion Rule
+
+## Blocked Rule
 ```
 
 ## OUTCOME.md

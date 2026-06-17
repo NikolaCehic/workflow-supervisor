@@ -21,6 +21,7 @@ Workflow Supervisor gives you a repeatable workflow for serious agent tasks:
 - a complete intake before work starts
 - a source map, even when the only source is the user prompt
 - a source-requirement coverage ledger so roadmap items and exit criteria cannot disappear
+- a `SPEC.md` review gate where humans can ask questions, request revisions, block, defer, or approve before work units are finalized
 - bounded work units, including `WU-001` for tiny tasks
 - dossiers that tell each worker exactly what to do and what not to touch
 - separate implementer, verifier, repair, and documenter responsibilities
@@ -94,16 +95,18 @@ Strict mode means task size does not matter. Even if the request is "make a func
 1. Ask the complete intake packet.
 2. Build or record the source corpus.
 3. Create a source-requirement coverage ledger.
-4. Create at least one work unit.
-5. Create acceptance rows that preserve source-scope fidelity.
-6. Create dossiers for the planned workers.
-7. Create a worker-agent plan.
-8. Ask for approval when the selected path is human-in-loop.
-9. Delegate scoped work to real workers when the environment supports it.
-10. Verify with evidence.
-11. Route repair work if verification fails.
-12. Refresh docs or outcome state.
-13. Report final status and next action.
+4. Create a `SPEC.md` review packet or file.
+5. Pause for human Q&A, revisions, block, defer, or approval when the path is human-in-loop.
+6. Create at least one work unit.
+7. Create acceptance rows that preserve source-scope fidelity.
+8. Create dossiers for the planned workers.
+9. Create a worker-agent plan.
+10. Ask for approval when the selected path is human-in-loop.
+11. Delegate scoped work to real workers when the environment supports it.
+12. Verify with evidence.
+13. Route repair work if verification fails.
+14. Refresh docs or outcome state.
+15. Report final status and next action.
 
 This rule exists to prevent the agent from deciding that a task is "too simple" and quietly skipping the supervisor.
 
@@ -125,6 +128,8 @@ If any answer is missing or vague, the supervisor asks only for the missing piec
 
 Expected human pauses are normal. A workflow can move from `WAITING_FOR_HUMAN` back to `ACTIVE` after the user approves a plan or answers a blocker question.
 
+In `autonomous_goal`, a human clarification pause is not automatically a terminal failed goal. The supervisor records the blocker, asks the smallest needed question, updates SPEC/Q&A/coverage state when the answer arrives, refreshes only affected downstream artifacts, and resumes from the recorded next action. If an old Codex goal was already terminal-blocked, the resumed workflow references it as history and continues from workflow state or a newly authorized goal binding.
+
 ## The Workflow
 
 The full loop looks like this:
@@ -133,6 +138,7 @@ The full loop looks like this:
 complete intake
 -> source corpus
 -> source-requirement coverage ledger
+-> SPEC review and Q&A gate
 -> work units
 -> loop policy
 -> acceptance matrix
@@ -156,6 +162,10 @@ planned -> handed_off -> acknowledged -> reported -> verified -> closed
 This makes it possible to see where the workflow is, which worker owns which piece, what evidence exists, and what should happen next.
 
 For source-of-truth builds, the coverage ledger is the guardrail against "green but incomplete" outcomes. Every material source requirement must be mapped to a work unit and acceptance row, explicitly deferred by the user, blocked as a scope decision, or marked non-material with a reason. Residual risks and future-work notes cannot contain unimplemented material source requirements in a PASS workflow.
+
+`SPEC.md` is the human review contract before final work units. In human-in-loop mode, the supervisor stops at the draft SPEC so the human can ask questions, request revisions, mark items deferred, block the workflow, or approve. The workflow continues only after explicit approval.
+
+When a workflow pauses for a human decision, the decision is recorded as state rather than treated as a restart. The next supervisor pass updates the affected coverage rows, SPEC fields, work units, acceptance rows, dossiers, or verification results, invalidates stale artifacts, and continues from the saved `Next Action`.
 
 ## Skills In The Pack
 
@@ -186,6 +196,7 @@ Common workflow files:
 |---|---|---|
 | `.workflow/WORKFLOW.md` | `workflow-supervisor`, `loop-policy`, `workflow-docs` | Main state, objective, execution path, policy, stop gates, next action. |
 | `.workflow/SOURCE-CORPUS.md` | `source-corpus`, `workflow-docs` | Source ranking, missing sources, contradictions, assumptions. |
+| `.workflow/SPEC.md` | `workflow-supervisor`, `source-corpus`, `workflow-docs` | Human-reviewable interpretation, requirement coverage, Q&A, and approval decision before work units. |
 | `.workflow/WORK-UNITS.md` | `work-unit`, `workflow-docs` | Unit list, dependencies, sequencing, blocked units. |
 | `.workflow/DOSSIER.md` or `.workflow/dossiers/*.yaml` | `dossier-builder`, `workflow-docs` | Worker contracts for implementation, verification, repair, or documentation. |
 | `.workflow/WORKER-MAP.md` | `workflow-supervisor`, `worker-roles`, `workflow-docs` | Worker names, roles, transports, lifecycle, reports, blockers. |
@@ -195,7 +206,7 @@ Common workflow files:
 | `.workflow/DECISIONS.md` | supervisor, `workflow-docs` | User decisions, assumptions, reversals, unresolved questions. |
 | `.workflow/HANDOFF.md` | supervisor, `workflow-docs` | Resume pack for another agent or later session. |
 | `.workflow/OUTCOME.md` | supervisor, documenter worker, `workflow-docs` | Final status, checks, risks, disposition, next action. |
-| `.workflow/GOAL-STATE.md` | supervisor, `workflow-docs` | Codex goal mirror when goal state needs durable backup. |
+| `.workflow/GOAL-STATE.md` | supervisor, `workflow-docs` | Codex goal mirror, blocked-goal history, human-decision resume checkpoint, and durable backup. |
 
 For documentation-heavy workflows, `workflow-docs` can also create:
 
@@ -415,10 +426,12 @@ You should expect:
 1. The supervisor asks the complete intake packet.
 2. You answer every intake item.
 3. If the path is `human_in_loop`, the supervisor gives you an approval packet before implementation.
-4. The supervisor creates the source-requirement coverage ledger, work units, acceptance rows, and dossiers.
-5. The supervisor delegates scoped work to workers when supported.
-6. Workers return structured reports.
-7. The supervisor verifies, routes repairs if needed, and gives you the final result.
+4. The supervisor creates the source-requirement coverage ledger and `SPEC.md`.
+5. You ask questions, request revisions, block, defer, or approve the SPEC.
+6. After approval, the supervisor creates work units, acceptance rows, and dossiers.
+7. The supervisor delegates scoped work to workers when supported.
+8. Workers return structured reports.
+9. The supervisor verifies, routes repairs if needed, and gives you the final result.
 
 If you only want a normal quick edit, do not invoke `$workflow-supervisor`.
 

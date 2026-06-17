@@ -2,7 +2,7 @@
 
 ## `workflow-supervisor`
 
-Coordinate explicit supervised or agent-loop workflows. It always starts with a complete intake gate before planning, implementation, goal binding, worker delegation, or final disposition. The user must answer every intake item; the supervisor must not infer or skip steps from keywords. After complete intake, it creates a source-requirement coverage ledger before work units so controlling-source deliverables, roadmap phases, and exit criteria are either implemented, explicitly deferred, blocked, or marked non-material. It then selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named workers from dossiers through the portable delegate command or an approved native adapter. Loading the skill itself does not spawn workers. It binds Codex goals only after complete intake and when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
+Coordinate explicit supervised or agent-loop workflows. It always starts with a complete intake gate before planning, implementation, goal binding, worker delegation, or final disposition. The user must answer every intake item; the supervisor must not infer or skip steps from keywords. After complete intake, it creates a source-requirement coverage ledger and SPEC review gate before work units so controlling-source deliverables, roadmap phases, and exit criteria are either implemented, explicitly deferred, blocked, or marked non-material. In human-in-loop mode, the human can ask questions, request revisions, block, defer, or approve the SPEC before final work units. In autonomous goal mode, human clarification pauses resume from recorded workflow state after the answer updates Q&A, decisions, coverage, and affected downstream artifacts. It then selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named workers from dossiers through the portable delegate command or an approved native adapter. Loading the skill itself does not spawn workers. It binds Codex goals only after complete intake and when the user or environment authorizes goal-oriented work, checks active goal state first, avoids unrelated active-goal collisions, and treats terminal blocked goals as history when resuming through workflow docs.
 
 ## `source-corpus`
 
@@ -26,8 +26,8 @@ Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguo
 
 ## `loop-policy`
 
-Define execution path, execution mode, worker delegation, approval gates, repair limits, parallel safety, no-progress rules, and Codex goal tool policy.
+Define execution path, execution mode, worker delegation, approval gates, repair limits, parallel safety, no-progress rules, human-decision resume rules, and Codex goal tool policy.
 
 ## `workflow-docs`
 
-Create durable workflow-state or documentation-production artifacts. Markdown artifacts default to `<workspace>/.workflow/` unless the user or project convention says otherwise. It also supports inline briefs, tickets, design annotations, runbooks, decision logs, and other usable state media.
+Create durable workflow-state or documentation-production artifacts. Markdown artifacts default to `<workspace>/.workflow/` unless the user or project convention says otherwise. It includes `SPEC.md` for human-readable interpretation, Q&A, and approval before work units, plus `GOAL-STATE.md` and resume fields for blocked-goal history and human-decision continuation. It also supports inline briefs, tickets, design annotations, runbooks, decision logs, and other usable state media.

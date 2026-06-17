@@ -34,6 +34,7 @@ Includes:
 
 - `WORKFLOW.md`
 - `SOURCE-CORPUS.md`
+- `SPEC.md`
 - `WORK-UNITS.md`
 - `DOSSIER.md`
 - `WORKER-MAP.md`
@@ -42,6 +43,7 @@ Includes:
 - `REPAIR-TICKETS.md`
 - `DECISIONS.md`
 - `HANDOFF.md`
+- `GOAL-STATE.md`
 - `OUTCOME.md`
 
 ## Goal And Resume
