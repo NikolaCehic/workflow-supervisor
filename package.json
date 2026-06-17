@@ -22,6 +22,7 @@
     "docs",
     "assets",
     "bin",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],
