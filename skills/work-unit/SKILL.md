@@ -43,6 +43,23 @@ Work-unit drafts coarse done criteria only. Use `$acceptance-matrix` when those 
 
 For over-broad one-pass requests, produce a sequencing recommendation and invoke or mirror `$loop-policy` fields for mode, parallel safety, approval gates, and repair limits.
 
+## One-Pass Collapse Guard
+
+Do not collapse a multi-phase roadmap, spec, or "source of truth" corpus into one broad implementation unit unless every material requirement can be completed and verified inside that unit. If the source contains phases, exit criteria, named integrations, scale targets, or different risk classes, split them into independently verifiable units.
+
+Treat these as separate-unit signals:
+
+- roadmap phases or milestones
+- multiple external data sources, providers, services, or credentials
+- live system integration plus local artifact fallback
+- extraction/indexing/retrieval/evaluation/reporting layers with different evidence needs
+- numeric targets such as corpus size, eval question count, latency budget, or coverage threshold
+- implementation work that would otherwise be described as residual risk, future work, or next recommended action
+
+If a supervisor provides a source-requirement coverage ledger, every `in_current_scope` material requirement must appear in at least one work unit's done criteria. Every `explicit_user_deferred`, `blocked_needs_decision`, or `out_of_scope_by_user` item must remain visible in `blocked_units` or a separate deferral list; do not hide it inside a unit note.
+
+Create exactly one `WU-001` only when the task is genuinely tiny or the full current-scope ledger can be implemented, verified, and documented as one bounded unit without deferred material requirements.
+
 ## Output Shape
 
 ```yaml
@@ -60,10 +77,12 @@ units:
     forbidden_surfaces:
     readiness:
     done_criteria:
+    source_requirements_covered:
     verification:
     sequence:
 parallel_groups:
 blocked_units:
+deferred_or_out_of_scope_requirements:
 first_recommended_unit:
 ```
 

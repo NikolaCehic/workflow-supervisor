@@ -8,8 +8,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, "..");
-const PACKAGE_NAME = "workflow-supervisor";
-const PACKAGE_VERSION = "0.1.1";
+const packageJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+const PACKAGE_NAME = packageJson.name || "workflow-supervisor";
+const PACKAGE_VERSION = packageJson.version;
 const WORKER_REPORT_SCHEMA_PATH = path.join(packageRoot, "schemas", "worker-report-v1.schema.json");
 const DOSSIER_SCHEMA_PATH = path.join(packageRoot, "schemas", "dossier-v1.schema.json");
 const ADAPTERS_ROOT = path.join(packageRoot, "adapters");

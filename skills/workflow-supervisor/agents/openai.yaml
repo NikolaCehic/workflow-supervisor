@@ -1,7 +1,7 @@
 interface:
   display_name: "Workflow Supervisor"
   short_description: "Run autonomous or human-gated workflows"
-  default_prompt: "Use $workflow-supervisor to run the complete intake gate first. Ask every required intake question and stop until the user explicitly answers all of them. Do not infer or skip steps from keywords such as autonomous, work until done, approval, generate, or create. Start planning or work only after complete intake is satisfied."
+  default_prompt: "Use $workflow-supervisor to run the complete intake gate first. Ask every required intake question and stop until the user explicitly answers all of them. Do not infer or skip steps from keywords such as autonomous, work until done, approval, generate, or create. After intake, create a source-requirement coverage ledger before work units, preserve source requirements in acceptance rows, and do not hide unimplemented material requirements in residual risks or future work."
 
 policy:
   allow_implicit_invocation: false

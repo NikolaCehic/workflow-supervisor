@@ -27,6 +27,14 @@ Use `$workflow-docs` with a minimal artifact request. The skill must reject "cre
 
 Use `$acceptance-matrix` for formal evidence rows. A PASS requires row-by-row evidence or explicit waiver evidence.
 
+## A broad roadmap becomes one giant work unit
+
+Use the source-requirement coverage gate before work-unit finalization. Every material roadmap item, exit criterion, named integration, and numeric target should be mapped to a unit and acceptance row, explicitly deferred by the user, blocked for a decision, or marked non-material with a reason. Do not accept "future work" or residual risk notes as a substitute for work units.
+
+## Residual risks contain required work
+
+Treat this as FAIL or BLOCKED. Residual risks may describe remaining uncertainty after acceptance, but they must not contain unimplemented material source requirements, skipped mandatory checks, or source-of-truth deliverables that were quietly downgraded.
+
 ## An existing skill folder blocks install
 
 Use:

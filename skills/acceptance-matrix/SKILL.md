@@ -15,15 +15,39 @@ This skill owns evidence rows and supervisor verdict mapping. `$work-unit` may d
 
 - Every requirement needs evidence.
 - Evidence must name a source, command, artifact, UI state, test, inspection, or user decision.
+- Acceptance rows must preserve the source requirement's strength: named systems, quantities, live/integration wording, exit criteria, and "must" language.
+- A weaker proxy check is not equivalent evidence unless the user explicitly waives or narrows the original requirement.
 - PASS requires all material rows to be satisfied or explicitly waived by the user.
 - FAIL requires at least one material row with unmet evidence.
 - BLOCKED applies when evidence cannot be obtained or sources conflict.
 - Residual risks must not be hidden inside PASS.
+- If residual risks, skipped checks, future work, or next recommended actions contain an unimplemented material source requirement, the matrix status is FAIL or BLOCKED, not PASS.
+
+## Source Fidelity Rules
+
+When a source-requirement coverage ledger exists, every `in_current_scope` material requirement needs at least one matrix row. Preserve exact source details that affect scope or verification, including:
+
+- named integrations or providers
+- corpus sizes, question counts, coverage thresholds, or latency/cost budgets
+- "live" versus artifact-only behavior
+- required data sources, credentials, services, or indexes
+- roadmap phase exit criteria
+- mandatory checks, screenshots, reports, or review states
+
+Do not downgrade requirements while making them testable. Examples of invalid substitutions:
+
+- live service load/query verification -> generated export file only
+- required validation corpus size -> small starter fixture
+- named provider support -> generic extension hook
+- required analysis and report generation -> keyword metadata only
+- provider-backed extraction or indexing -> deterministic placeholder logic
+
+If a requirement cannot be verified in the current environment, mark it BLOCKED or require a user waiver. Do not convert it into an easier row.
 
 ## Row Shape
 
-| ID | Requirement | Evidence Required | Verification Method | Adversarial Check | Status | Evidence |
-|---|---|---|---|---|---|---|
+| ID | Source Ref | Requirement | Evidence Required | Verification Method | Adversarial Check | Status | Evidence |
+|---|---|---|---|---|---|---|---|
 
 Use statuses: Pending, PASS, FAIL, BLOCKED, Waived.
 
@@ -46,6 +70,9 @@ Consider:
 - missing citation or unsupported claim
 - document structure regression
 - stakeholder requirement omitted
+- source requirement weakened or omitted
+- roadmap exit criteria demoted to future work
+- material requirement hidden in residual risks
 - artifact cannot be reused by a fresh agent or human
 
 ## Verification Report Shape

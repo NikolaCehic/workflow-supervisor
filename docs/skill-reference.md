@@ -2,7 +2,7 @@
 
 ## `workflow-supervisor`
 
-Coordinate explicit supervised or agent-loop workflows. It always starts with a complete intake gate before planning, implementation, goal binding, worker delegation, or final disposition. The user must answer every intake item; the supervisor must not infer or skip steps from keywords. After complete intake, it selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named workers from dossiers through the portable delegate command or an approved native adapter. Loading the skill itself does not spawn workers. It binds Codex goals only after complete intake and when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
+Coordinate explicit supervised or agent-loop workflows. It always starts with a complete intake gate before planning, implementation, goal binding, worker delegation, or final disposition. The user must answer every intake item; the supervisor must not infer or skip steps from keywords. After complete intake, it creates a source-requirement coverage ledger before work units so controlling-source deliverables, roadmap phases, and exit criteria are either implemented, explicitly deferred, blocked, or marked non-material. It then selects either autonomous goal execution or human-in-the-loop execution, then orchestrates named workers from dossiers through the portable delegate command or an approved native adapter. Loading the skill itself does not spawn workers. It binds Codex goals only after complete intake and when the user or environment authorizes goal-oriented work, checks active goal state first, and avoids unrelated active-goal collisions.
 
 ## `source-corpus`
 
@@ -10,7 +10,7 @@ Rank and reconcile sources when authority, freshness, contradictions, access rig
 
 ## `work-unit`
 
-Split broad work into bounded units with objective, scope, dependencies, readiness, done criteria, verification, sequencing, and parallel-safety notes.
+Split broad work into bounded units with objective, scope, dependencies, readiness, done criteria, verification, sequencing, and parallel-safety notes. It prevents broad roadmap or source-of-truth requests from collapsing into one giant unit unless all current-scope material requirements can be implemented and verified in that unit.
 
 ## `dossier-builder`
 
@@ -22,7 +22,7 @@ Define role contracts and solo-mode phase separation. It prevents role bleed: ve
 
 ## `acceptance-matrix`
 
-Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguous, resumable, or delegated workflows.
+Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguous, resumable, or delegated workflows. Rows must preserve source requirement strength, including named systems, quantities, live integration language, and exit criteria; weaker proxy checks require explicit user waiver or scope narrowing.
 
 ## `loop-policy`
 

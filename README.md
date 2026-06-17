@@ -20,6 +20,7 @@ Workflow Supervisor gives you a repeatable workflow for serious agent tasks:
 
 - a complete intake before work starts
 - a source map, even when the only source is the user prompt
+- a source-requirement coverage ledger so roadmap items and exit criteria cannot disappear
 - bounded work units, including `WU-001` for tiny tasks
 - dossiers that tell each worker exactly what to do and what not to touch
 - separate implementer, verifier, repair, and documenter responsibilities
@@ -92,16 +93,17 @@ Strict mode means task size does not matter. Even if the request is "make a func
 
 1. Ask the complete intake packet.
 2. Build or record the source corpus.
-3. Create at least one work unit.
-4. Create acceptance rows.
-5. Create dossiers for the planned workers.
-6. Create a worker-agent plan.
-7. Ask for approval when the selected path is human-in-loop.
-8. Delegate scoped work to real workers when the environment supports it.
-9. Verify with evidence.
-10. Route repair work if verification fails.
-11. Refresh docs or outcome state.
-12. Report final status and next action.
+3. Create a source-requirement coverage ledger.
+4. Create at least one work unit.
+5. Create acceptance rows that preserve source-scope fidelity.
+6. Create dossiers for the planned workers.
+7. Create a worker-agent plan.
+8. Ask for approval when the selected path is human-in-loop.
+9. Delegate scoped work to real workers when the environment supports it.
+10. Verify with evidence.
+11. Route repair work if verification fails.
+12. Refresh docs or outcome state.
+13. Report final status and next action.
 
 This rule exists to prevent the agent from deciding that a task is "too simple" and quietly skipping the supervisor.
 
@@ -130,6 +132,7 @@ The full loop looks like this:
 ```text
 complete intake
 -> source corpus
+-> source-requirement coverage ledger
 -> work units
 -> loop policy
 -> acceptance matrix
@@ -151,6 +154,8 @@ planned -> handed_off -> acknowledged -> reported -> verified -> closed
 ```
 
 This makes it possible to see where the workflow is, which worker owns which piece, what evidence exists, and what should happen next.
+
+For source-of-truth builds, the coverage ledger is the guardrail against "green but incomplete" outcomes. Every material source requirement must be mapped to a work unit and acceptance row, explicitly deferred by the user, blocked as a scope decision, or marked non-material with a reason. Residual risks and future-work notes cannot contain unimplemented material source requirements in a PASS workflow.
 
 ## Skills In The Pack
 
@@ -410,7 +415,7 @@ You should expect:
 1. The supervisor asks the complete intake packet.
 2. You answer every intake item.
 3. If the path is `human_in_loop`, the supervisor gives you an approval packet before implementation.
-4. The supervisor creates work units, acceptance rows, and dossiers.
+4. The supervisor creates the source-requirement coverage ledger, work units, acceptance rows, and dossiers.
 5. The supervisor delegates scoped work to workers when supported.
 6. Workers return structured reports.
 7. The supervisor verifies, routes repairs if needed, and gives you the final result.

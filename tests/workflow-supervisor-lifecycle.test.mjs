@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const skillText = fs.readFileSync(path.join(repoRoot, "skills/workflow-supervisor/SKILL.md"), "utf8");
+const workUnitText = fs.readFileSync(path.join(repoRoot, "skills/work-unit/SKILL.md"), "utf8");
+const acceptanceText = fs.readFileSync(path.join(repoRoot, "skills/acceptance-matrix/SKILL.md"), "utf8");
+const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
 const agentPrompt = fs.readFileSync(
   path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
   "utf8",
@@ -69,6 +72,7 @@ test("workflow-supervisor contract requires complete intake before work starts",
 test("workflow-supervisor explicit invocation requires strict worker-agent workflow", () => {
   assert.match(skillText, /strict_full_workflow/);
   assert.match(skillText, /Task size is irrelevant/);
+  assert.match(skillText, /source-requirement coverage ledger before work-unit finalization/);
   assert.match(skillText, /At least one bounded work unit, even for a tiny change/);
   assert.match(skillText, /worker-agent plan with implementer, verifier, repair-author, and documenter agents/);
   assert.match(skillText, /planned -> handed_off -> acknowledged -> reported -> verified -> closed/);
@@ -108,7 +112,68 @@ test("OpenAI metadata prompt preserves complete intake behavior", () => {
   assert.match(agentPrompt, /complete intake gate/i);
   assert.match(agentPrompt, /Ask every required intake question/i);
   assert.match(agentPrompt, /Do not infer or skip steps from keywords/i);
-  assert.match(agentPrompt, /Start planning or work only after complete intake/i);
+  assert.match(agentPrompt, /source-requirement coverage ledger/i);
+  assert.match(agentPrompt, /do not hide unimplemented material requirements in residual risks or future work/i);
+});
+
+test("workflow-supervisor requires source coverage before units and closeout", () => {
+  assert.match(skillText, /## Source Requirement Coverage Gate/);
+  assert.match(skillText, /source deliverables, roadmap phases, exit criteria, named integrations, scale targets/);
+  assert.match(skillText, /in_current_scope/);
+  assert.match(skillText, /explicit_user_deferred/);
+  assert.match(skillText, /blocked_needs_decision/);
+  assert.match(skillText, /Do not weaken requirements while translating them into units or acceptance rows/);
+  assert.match(skillText, /Create exactly one implementation work unit only when all current-scope material requirements can be implemented and verified inside that one unit/);
+  assert.match(skillText, /Audit skipped checks, residual risks, future work, and next recommended actions against the source-requirement coverage ledger/);
+  assert.match(skillText, /workflow may be PASS only when every material requirement is mapped to a PASS acceptance row/);
+});
+
+test("workflow-supervisor forbids generic requirement downgrades that cause incomplete green runs", () => {
+  for (const phrase of [
+    "live service import and query verification",
+    "required validation corpus size",
+    "named providers A and B",
+    "required batch analysis and report generation",
+    "provider-backed extraction and indexing",
+  ]) {
+    assert.match(skillText, new RegExp(escapeRegExp(phrase)));
+  }
+
+  for (const phrase of [
+    "live service load/query verification",
+    "required validation corpus size",
+    "named provider support",
+    "required analysis and report generation",
+    "provider-backed extraction or indexing",
+  ]) {
+    assert.match(acceptanceText, new RegExp(escapeRegExp(phrase)));
+  }
+});
+
+test("work-unit guard prevents broad roadmap collapse into a single WU", () => {
+  assert.match(workUnitText, /## One-Pass Collapse Guard/);
+  assert.match(workUnitText, /Do not collapse a multi-phase roadmap, spec, or "source of truth" corpus into one broad implementation unit/);
+  assert.match(workUnitText, /roadmap phases or milestones/);
+  assert.match(workUnitText, /numeric targets such as corpus size, eval question count, latency budget, or coverage threshold/);
+  assert.match(workUnitText, /Create exactly one `WU-001` only when the task is genuinely tiny/);
+  assert.match(workUnitText, /source_requirements_covered/);
+  assert.match(workUnitText, /deferred_or_out_of_scope_requirements/);
+});
+
+test("acceptance-matrix preserves source requirement strength and rejects residual-risk hiding", () => {
+  assert.match(acceptanceText, /Acceptance rows must preserve the source requirement's strength/);
+  assert.match(acceptanceText, /A weaker proxy check is not equivalent evidence unless the user explicitly waives or narrows/);
+  assert.match(acceptanceText, /If residual risks, skipped checks, future work, or next recommended actions contain an unimplemented material source requirement, the matrix status is FAIL or BLOCKED, not PASS/);
+  assert.match(acceptanceText, /Source Ref/);
+  assert.match(acceptanceText, /source requirement weakened or omitted/);
+  assert.match(acceptanceText, /roadmap exit criteria demoted to future work/);
+  assert.match(acceptanceText, /material requirement hidden in residual risks/);
+});
+
+test("README documents the coverage ledger as the green-but-incomplete guardrail", () => {
+  assert.match(readmeText, /source-requirement coverage ledger so roadmap items and exit criteria cannot disappear/);
+  assert.match(readmeText, /guardrail against "green but incomplete" outcomes/);
+  assert.match(readmeText, /Residual risks and future-work notes cannot contain unimplemented material source requirements in a PASS workflow/);
 });
 
 test("screenshot prompt cannot start work because complete intake is missing", () => {
