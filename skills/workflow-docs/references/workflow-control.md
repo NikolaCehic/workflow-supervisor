@@ -56,6 +56,39 @@ Stale Artifacts Invalidated:
 ## Next Action
 ```
 
+## LEDGER.md
+
+Use this for `lean_work_unit_runner` when the backlog is already bounded and the workflow needs high throughput with human-verifiable state.
+
+```md
+# Lean Work Unit Ledger
+
+Profile: lean_work_unit_runner
+Execution Path:
+Mode:
+Delegation:
+Final Disposition:
+Batch Checkpoint:
+
+## Scope Contract
+
+Objective:
+Controlling Backlog Or Source:
+Allowed Surfaces:
+Forbidden Surfaces:
+Escalation Triggers:
+
+## Units
+
+| ID | Source Ref | Scope | Done Signal | Check | Status | Touched Surfaces | Evidence | Blocker Or Next Action |
+|---|---|---|---|---|---|---|---|---|
+
+## Batch Checkpoints
+
+| Batch | Units | Result | Checks | Human Review Needed | Next Action |
+|---|---|---|---|---|---|
+```
+
 ## SOURCE-CORPUS.md
 
 ```md
@@ -226,14 +259,16 @@ Notes:
 ```md
 # Worker Map
 
-| Worker Name | Role | Transport | Work Unit | Dossier | Start Condition | Dependencies | Status | Terminal Report |
-|---|---|---|---|---|---|---|---|---|
+| Worker Name | Role | Transport | Native Resource ID | Work Unit | Dossier | Start Condition | Dependencies | Status | Terminal Report | Close Action | Close Result |
+|---|---|---|---|---|---|---|---|---|---|---|---|
 
 ## Supervisor Checkpoints
 
 ## Blocked Workers
 
 ## Closed Workers
+
+Closed means the terminal report has been consumed and any native thread or subagent resource has a recorded close result. For Codex subagents, record the `spawn_agent` id as Native Resource ID and `close_agent` as Close Action. A workflow with open native workers must remain BLOCKED until the close result is recorded.
 ```
 
 ## ACCEPTANCE-MATRIX.md
