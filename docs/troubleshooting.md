@@ -23,6 +23,16 @@ Use `.workflow/GOAL-STATE.md` or a workflow continuation document. The superviso
 
 Use `$workflow-docs` with a minimal artifact request. The skill must reject "create every document just in case."
 
+## Large backlogs run slowly or exhaust memory
+
+Use `lean_work_unit_runner` instead of `strict_full_workflow` when the source already contains clear work units and the user's priority is throughput. Keep one compact ledger with `id`, `source_ref`, `scope`, `done`, `check`, `status`, touched surfaces, and blockers. Run one unit at a time by default, avoid subagents unless explicitly authorized, avoid broad scans unless required for the current unit, and checkpoint by batch rather than rewriting full workflow docs after every unit.
+
+Do not remove work units to make the process lean. If a unit cannot name its boundary, done signal, or targeted check, mark it `blocked` or escalate that unit to strict mode.
+
+## Native subagents remain open after completion
+
+Treat this as a lifecycle bug, not a cosmetic cleanup task. A terminal report or completed notification does not close a native Codex subagent. Record every native worker id in `WORKER-MAP.md`, call the native close action such as `close_agent` after the terminal report or blocker is captured, and block the final outcome if any native worker lacks a close result. Prefer one-shot portable delegation when it satisfies the work.
+
 ## Verification rubber-stamps the result
 
 Use `$acceptance-matrix` for formal evidence rows. A PASS requires row-by-row evidence or explicit waiver evidence.

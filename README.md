@@ -1,8 +1,8 @@
 # Workflow Supervisor
 
-Workflow Supervisor is a strict supervision skill pack for agent work that needs to stay organized, resumable, and evidence-backed.
+Workflow Supervisor is a profile-based supervision skill pack for agent work that needs to stay organized, resumable, evidence-backed, and proportional to the work.
 
-It is for moments when you do not want an agent to jump straight into implementation, lose the thread halfway through, verify its own work, or quietly skip important handoffs. You ask for the supervisor, the supervisor asks the right setup questions, turns the work into small units, creates worker dossiers, delegates scoped work to real worker agents when possible, verifies the results, and leaves a clear outcome trail.
+It is for moments when you do not want an agent to lose the thread halfway through, quietly skip scope, or turn a large backlog into an unreviewable blur. You ask for the supervisor, the supervisor selects the right execution profile, keeps the work units explicit, verifies results with evidence, and leaves a clear outcome trail. Heavy multi-agent ceremony is available when risk justifies it; large pure backlogs can use a lean runner that keeps the agent focused on delivery.
 
 Example prompt:
 
@@ -19,10 +19,12 @@ The correct first response is not code. The correct first response is an intake 
 Workflow Supervisor gives you a repeatable workflow for serious agent tasks:
 
 - a complete intake before work starts
+- a profile choice between `lean_work_unit_runner`, `strict_full_workflow`, and `planning_only`
 - a source map, even when the only source is the user prompt
 - a source-requirement coverage ledger so roadmap items and exit criteria cannot disappear
 - a `SPEC.md` review gate where humans can ask questions, request revisions, block, defer, or approve before work units are finalized
 - bounded work units, including `WU-001` for tiny tasks
+- a compact ledger for high-throughput work-unit execution
 - dossiers that tell each worker exactly what to do and what not to touch
 - separate implementer, verifier, repair, and documenter responsibilities
 - structured worker reports instead of loose prose
@@ -31,7 +33,7 @@ Workflow Supervisor gives you a repeatable workflow for serious agent tasks:
 - durable `.workflow/` state when the work needs to survive context loss
 - a final report with checks, risks, workers, and next actions
 
-The main design choice is simple: the supervisor coordinates, workers do scoped work, and the CLI stays small.
+The main design choice is simple: supervision is mandatory when requested, but overhead is profile-dependent. Work units preserve clarity. Workers, dossiers, and independent verifier loops are tools for strict or escalated work, not a default tax on every unit.
 
 ## The Mental Model
 
@@ -88,9 +90,35 @@ flowchart TB
 
 ## What Happens When You Invoke It
 
-When you explicitly invoke `workflow-supervisor`, `$workflow-supervisor`, or say to use the skill, the workflow enters `strict_full_workflow`.
+When you explicitly invoke `workflow-supervisor`, `$workflow-supervisor`, or say to use the skill, the first decision is the execution profile:
 
-Strict mode means task size does not matter. Even if the request is "make a function that adds two numbers", explicit supervisor invocation still means the full workflow:
+- `lean_work_unit_runner`: for large, already-bounded work-unit backlogs where throughput and low memory matter.
+- `strict_full_workflow`: for ambiguous, high-risk, delegated, security-sensitive, source-of-truth, publication, or cross-system work.
+- `planning_only`: for intake, sequencing, risk review, and recommendations without implementation.
+
+Lean mode keeps work units but removes per-unit ceremony. It uses one upfront scope contract, one compact ledger, targeted checks, and strict escalation gates:
+
+```text
+select next ready unit
+-> inspect only needed sources
+-> patch or update the allowed surface
+-> run the targeted check
+-> update one ledger row
+-> continue until batch checkpoint, blocker, or final disposition
+```
+
+A lean unit is not ready unless it has:
+
+```yaml
+id:
+source_ref:
+scope:
+done:
+check:
+status:
+```
+
+Strict mode is still available when risk justifies it. In strict mode, task size does not matter. The full workflow is:
 
 1. Ask the complete intake packet.
 2. Build or record the source corpus.
@@ -108,20 +136,21 @@ Strict mode means task size does not matter. Even if the request is "make a func
 14. Refresh docs or outcome state.
 15. Report final status and next action.
 
-This rule exists to prevent the agent from deciding that a task is "too simple" and quietly skipping the supervisor.
+Profile selection exists to prevent both failure modes: skipping supervision when work is risky, and drowning simple or already-bounded work in process.
 
 ## Intake
 
-The supervisor must get explicit answers to these seven items before planning deeply, creating a goal, delegating workers, implementing, publishing, or taking irreversible action:
+The supervisor must get explicit answers to these eight items before planning deeply, creating a goal, delegating workers, implementing, publishing, or taking irreversible action:
 
 ```text
 1. Objective and source: what artifact, spec, repo path, document, ticket, or source set controls the work?
-2. Execution path: autonomous_goal or human_in_loop?
-3. Mode: sequential, parallel where safe, or staged parallel?
-4. Delegation: automated worker delegation, native threads/subagents if available, or same-session phased?
-5. Final disposition: keep local, open PR, push main, deploy/publish, or ask at the end?
-6. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files?
-7. State artifacts: create .workflow docs, use another artifact directory, or keep state inline?
+2. Profile: lean_work_unit_runner, strict_full_workflow, or planning_only?
+3. Execution path: autonomous_goal or human_in_loop?
+4. Mode: sequential, parallel where safe, or staged parallel?
+5. Delegation: same-session phased, automated worker delegation, or native threads/subagents if available?
+6. Final disposition: keep local, open PR, push main, deploy/publish, or ask at the end?
+7. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files?
+8. State artifacts: compact ledger, .workflow docs, another artifact directory, or inline state?
 ```
 
 If any answer is missing or vague, the supervisor asks only for the missing pieces and stops. Phrases like "work autonomously", "just do it", or "use your judgment" do not fill in the missing intake fields.
@@ -156,10 +185,10 @@ complete intake
 The worker lifecycle is tracked separately:
 
 ```text
-planned -> handed_off -> acknowledged -> reported -> verified -> closed
+planned -> handed_off -> acknowledged -> reported -> verified -> resource_closed -> closed
 ```
 
-This makes it possible to see where the workflow is, which worker owns which piece, what evidence exists, and what should happen next.
+This makes it possible to see where the workflow is, which worker owns which piece, what evidence exists, what native resource was opened, and whether that resource was closed. A native worker is not closed just because it returned a report.
 
 For source-of-truth builds, the coverage ledger is the guardrail against "green but incomplete" outcomes. Every material source requirement must be mapped to a work unit and acceptance row, explicitly deferred by the user, blocked as a scope decision, or marked non-material with a reason. Residual risks and future-work notes cannot contain unimplemented material source requirements in a PASS workflow.
 
@@ -199,7 +228,7 @@ Common workflow files:
 | `.workflow/SPEC.md` | `workflow-supervisor`, `source-corpus`, `workflow-docs` | Human-reviewable interpretation, requirement coverage, Q&A, and approval decision before work units. |
 | `.workflow/WORK-UNITS.md` | `work-unit`, `workflow-docs` | Unit list, dependencies, sequencing, blocked units. |
 | `.workflow/DOSSIER.md` or `.workflow/dossiers/*.yaml` | `dossier-builder`, `workflow-docs` | Worker contracts for implementation, verification, repair, or documentation. |
-| `.workflow/WORKER-MAP.md` | `workflow-supervisor`, `worker-roles`, `workflow-docs` | Worker names, roles, transports, lifecycle, reports, blockers. |
+| `.workflow/WORKER-MAP.md` | `workflow-supervisor`, `worker-roles`, `workflow-docs` | Worker names, roles, transports, native resource ids, lifecycle, reports, close results, blockers. |
 | `.workflow/ACCEPTANCE-MATRIX.md` | `acceptance-matrix`, `workflow-docs` | Evidence rows and material PASS, FAIL, BLOCKED states. |
 | `.workflow/VERIFICATION-REPORT.md` | verifier worker, `acceptance-matrix`, `workflow-docs` | Verification evidence, findings, skipped checks, residual risks. |
 | `.workflow/REPAIR-TICKETS.md` | repair worker, `workflow-docs` | Repair tasks tied to failed rows or verifier findings. |
@@ -313,9 +342,11 @@ Every delegated worker returns this machine-shaped report:
 
 The supervisor trusts the report shape, not loose prose. A PASS without evidence is invalid. A verifier that edits implementation is invalid. A worker that asks the human directly is converted into a blocker for the supervisor to route.
 
+For native threads or subagents, the report is only the work result. The supervisor must also close the native resource. For Codex subagents, record the returned `agent_id` and call `close_agent` after the report, timeout, failure, blocker, cancellation, or invalid-output result is captured. Final outcome is blocked while any native worker lacks a close result.
+
 ## How The Supervisor Talks To Workers
 
-The portable worker path is one CLI command:
+The portable worker path is one CLI command and is preferred when it satisfies the work because it is one-shot:
 
 ```bash
 workflow-supervisor delegate \
@@ -351,9 +382,11 @@ workflow-supervisor delegate-doctor --agent all --probe --require-pass
 
 If a worker adapter is missing, unauthenticated, times out, returns invalid output, edits forbidden surfaces, or returns PASS without evidence, the delegate command returns a structured `BLOCKED` report.
 
+Native thread or subagent transports may be used only when the environment exposes the full lifecycle: create, wait or receive a terminal report, and close. If a native transport can start workers but cannot close them, the supervisor records `worker_resource_close_unavailable` and uses portable delegation or same-session phased work only when intake allows it.
+
 ## No Silent Fallbacks
 
-If the environment can create, message, or delegate to worker agents, the supervisor must use real workers for implementation, verification, repair, and documentation responsibilities.
+In `strict_full_workflow` with worker delegation selected, if the environment can create, message, or delegate to worker agents, the supervisor must use real workers for implementation, verification, repair, and documentation responsibilities.
 
 If it cannot, it must record:
 
@@ -363,7 +396,7 @@ worker_agent_unavailable
 
 Then it must stop for a human decision unless complete intake explicitly selected `same_session_phased`.
 
-Same-session phased work is allowed only when selected. Verification in that mode is a `self-check`, not an `independent-verifier`.
+In `lean_work_unit_runner`, same-session phased execution is the default unless the user explicitly authorizes workers for a batch or escalation. Verification in same-session mode is a `focused-check` or `self-check`, not an `independent-verifier`.
 
 ## Install
 
@@ -538,11 +571,11 @@ If you are an agent using this package:
 
 1. Do not start work before complete intake.
 2. Do not infer missing permissions from words like "autonomous", "generate", or "work until done".
-3. If `$workflow-supervisor` is explicit, always create at least one work unit.
-4. Do not delegate without a valid `DossierV1`.
-5. Use separate worker agents when supported by the environment.
-6. Do not silently collapse worker agents into same-session roleplay.
-7. Treat same-session verification as `self-check`, not `independent-verifier`.
+3. If `$workflow-supervisor` is explicit, select `lean_work_unit_runner`, `strict_full_workflow`, or `planning_only` before heavy planning.
+4. Always keep work units explicit; lean mode uses a compact ledger instead of full per-unit ceremony.
+5. Do not delegate without a valid `DossierV1`.
+6. Use separate worker agents in strict or explicitly delegated work, not by default for lean execution.
+7. Treat same-session verification as `focused-check` or `self-check`, not `independent-verifier`.
 8. Trust only structured `WorkerReportV1` results from delegated workers.
 9. Treat verifier edits as invalid.
 10. Keep `.workflow/` ignored and local unless the user explicitly asks to publish it.

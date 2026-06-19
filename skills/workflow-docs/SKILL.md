@@ -61,11 +61,12 @@ For documentation work, start with `DOCUMENTATION-BRIEF.md` unless the user prov
 ## Artifact Selection
 
 - `.workflow/WORKFLOW.md`: overall objective, policy, state, units, and next action.
+- `.workflow/LEDGER.md`: compact lean-runner state for large bounded backlogs, with one row per work unit and targeted check evidence.
 - `.workflow/SOURCE-CORPUS.md`: source map, authority ranking, contradictions, gaps.
 - `.workflow/SPEC.md`: human-reviewable interpretation contract, requirement coverage, Q&A, and approval decision before final work units.
 - `.workflow/WORK-UNITS.md`: decomposition and sequencing.
 - `.workflow/DOSSIER.md`: delegation contract for one unit.
-- `.workflow/WORKER-MAP.md`: worker names, roles, transports, dossiers, dependencies, start conditions, report status, and supervisor checkpoints.
+- `.workflow/WORKER-MAP.md`: worker names, roles, transports, native resource ids, dossiers, dependencies, start conditions, report status, close actions, close results, and supervisor checkpoints.
 - `.workflow/ACCEPTANCE-MATRIX.md`: verifiable done criteria.
 - `.workflow/VERIFICATION-REPORT.md`: evidence-backed PASS/FAIL/BLOCKED report.
 - `.workflow/REPAIR-TICKETS.md`: actionable repair tasks from verifier findings.

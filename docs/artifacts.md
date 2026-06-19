@@ -8,6 +8,7 @@ In Git-backed codebases, `.workflow/` is local working state. Ensure `<workspace
 
 ## Workflow Control
 
+- `.workflow/LEDGER.md`
 - `.workflow/WORKFLOW.md`
 - `.workflow/SOURCE-CORPUS.md`
 - `.workflow/WORK-UNITS.md`
@@ -40,3 +41,7 @@ In Git-backed codebases, `.workflow/` is local working state. Ensure `<workspace
 ## State Medium
 
 Markdown is the default, but state may also be an inline brief, spreadsheet tab, ticket set, design annotation, CRM note, runbook, decision log, slide appendix, whiteboard note, or chat continuation note.
+
+For `lean_work_unit_runner`, prefer one compact ledger over multiple workflow documents. Each executable row should carry `id`, `source_ref`, `scope`, `done`, `check`, `status`, touched surfaces, and blockers. Escalated units may link to strict-mode SPEC, dossier, or verification artifacts only when needed.
+
+For native thread or subagent delegation, `WORKER-MAP.md` must record the native resource id, terminal report, close action, and close result. Do not mark a native worker closed until the resource close is recorded.

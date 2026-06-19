@@ -18,6 +18,10 @@ complete intake
 -> final supervisor report
 ```
 
+This document describes strict or explicitly delegated execution. `lean_work_unit_runner` normally stays in same-session phased execution with a compact ledger and targeted checks. It should enter portable delegation only when the user authorizes workers for a batch or a unit hits a strict-mode escalation trigger.
+
+Prefer portable delegation over native threads or subagents when it satisfies the work. Portable delegation is one-shot, so the worker process exits after the report. Native thread or subagent transports are allowed only when the supervisor can record the native resource id and call the matching close operation after terminal report, timeout, blocker, cancellation, or invalid output.
+
 The supervisor remains the only coordinator. Workers do not ask the human questions, choose final disposition, expand scope, approve plans, or talk to each other. If a worker needs a decision, it returns `BLOCKED` with a `blocking_question`; only the supervisor asks the user.
 
 ## Non-Goals
@@ -163,6 +167,7 @@ For git workspaces, the surface guard compares pre/post git status. Mutable role
 | Repair expands scope | Reject unless the repair dossier explicitly allowed the new surfaces and criteria. |
 | Units touch same surfaces | Run sequentially. Parallel delegation requires proven disjoint mutable surfaces. |
 | Platform has no native subagents | Fine. Each role is a fresh one-shot CLI process. |
+| Native subagent close is unavailable | Do not spawn it. Return `worker_resource_close_unavailable` and use portable delegation or same-session phased work only if intake allowed it. |
 | Platform output differs | Platform output is not the contract. `WorkerReportV1` is the only supervisor input. |
 | Platform cannot support a role safely | Adapter role is unsupported. Supervisor chooses another certified adapter or blocks. |
 | Full support is claimed but one CLI is absent | `delegate-doctor --agent all --probe --require-pass` exits nonzero and names the missing adapter. |

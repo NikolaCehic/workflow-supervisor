@@ -2,6 +2,32 @@
 
 This changelog was reconstructed from npm publish metadata and git history after the first four package versions were published without GitHub releases or tags.
 
+## 0.1.4 - 2026-06-19
+
+Prepared for npm publication.
+
+### Added
+
+- Added profile-based supervisor execution with `lean_work_unit_runner`, `strict_full_workflow`, and `planning_only`.
+- Added compact lean-runner ledger guidance for large bounded backlogs that need lower memory and less ceremony.
+- Added native worker resource lifecycle rules for thread and subagent transports.
+
+### Changed
+
+- Changed strict worker lifecycle from logical closeout only to `planned -> handed_off -> acknowledged -> reported -> verified -> resource_closed -> closed`.
+- Required native worker transports to record resource ids, close actions, and close results before final workflow outcome.
+- Made one-shot portable delegation the preferred worker path when it satisfies the work, because it avoids resident native workers.
+
+### Fixed
+
+- Prevented completed Codex subagents from remaining open after workflow-supervisor runs by requiring `close_agent` for every recorded native `agent_id`.
+- Blocked final PASS when any native worker has no recorded close result.
+- Reduced large-backlog memory pressure by defaulting lean execution to same-session phased work unless workers are explicitly authorized or risk escalation requires them.
+
+### Verified
+
+- Expanded lifecycle tests to cover profile selection, lean ledgers, native worker resource ids, `close_agent`, and close-result gates.
+
 ## 0.1.3 - 2026-06-17
 
 Published to npm: 2026-06-17 22:09:08 UTC

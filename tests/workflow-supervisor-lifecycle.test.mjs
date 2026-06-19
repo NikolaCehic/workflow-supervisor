@@ -20,6 +20,7 @@ const agentPrompt = fs.readFileSync(
 
 const intakeFields = [
   { id: "objective_and_source", label: "Objective and source" },
+  { id: "profile", label: "Profile" },
   { id: "execution_path", label: "Execution path" },
   { id: "mode", label: "Mode" },
   { id: "delegation", label: "Delegation" },
@@ -73,28 +74,60 @@ test("workflow-supervisor contract requires complete intake before work starts",
   assert.match(skillText, /Classify the workflow as `autonomous_goal` or `human_in_loop` only from completed intake answers/);
 });
 
-test("workflow-supervisor explicit invocation requires strict worker-agent workflow", () => {
+test("workflow-supervisor explicit invocation selects a proportional execution profile", () => {
+  assert.match(skillText, /first classify the workflow profile/);
+  assert.match(skillText, /lean_work_unit_runner/);
   assert.match(skillText, /strict_full_workflow/);
-  assert.match(skillText, /Task size is irrelevant/);
+  assert.match(skillText, /planning_only/);
+  assert.match(skillText, /Do not run strict ceremony just because the skill was named/);
+  assert.match(skillText, /Lean mode optimizes for large-unit throughput while preserving non-ambiguity/);
+  assert.match(skillText, /Do not start a lean unit unless its boundary and done signal are clear/);
+  assert.match(skillText, /one compact ledger/);
+  assert.match(skillText, /Escalate a lean unit to `strict_full_workflow`/);
+});
+
+test("workflow-supervisor strict profile retains worker-agent governance", () => {
+  assert.match(skillText, /Strict mode always requires:/);
   assert.match(skillText, /source-requirement coverage ledger before work-unit finalization/);
   assert.match(skillText, /SPEC review packet or `\.workflow\/SPEC\.md` before work-unit finalization/);
   assert.match(skillText, /At least one bounded work unit, even for a tiny change/);
   assert.match(skillText, /worker-agent plan with implementer, verifier, repair-author, and documenter agents/);
-  assert.match(skillText, /planned -> handed_off -> acknowledged -> reported -> verified -> closed/);
+  assert.match(skillText, /planned -> handed_off -> acknowledged -> reported -> verified -> resource_closed -> closed/);
   assert.match(skillText, /Do not silently collapse worker agents into same-session work/);
   assert.match(skillText, /Every worker report back to the supervisor must use this schema/);
   assert.match(skillText, /role: implementer \| verifier \| repair-author \| documenter/);
 });
 
+test("workflow-supervisor requires native worker resources to be closed", () => {
+  assert.match(skillText, /## Native Worker Resource Lifecycle/);
+  assert.match(skillText, /A worker is not `closed` until its native resource has also been released/);
+  assert.match(skillText, /Record the native resource id immediately after creation/);
+  assert.match(skillText, /For Codex subagents, call `close_agent` with the recorded `agent_id`/);
+  assert.match(skillText, /open_native_worker/);
+  assert.match(skillText, /worker_resource_close_unavailable/);
+  assert.match(skillText, /worker_resource_close_failed/);
+  assert.match(skillText, /Do not use native thread or native subagent workers unless the environment exposes a close operation/);
+  assert.match(loopPolicyText, /native_worker_lifecycle:/);
+  assert.match(loopPolicyText, /codex_close_action: close_agent/);
+  assert.match(loopPolicyText, /blocked if any native worker lacks close_result/);
+  assert.match(workflowControlText, /Native Resource ID/);
+  assert.match(workflowControlText, /Close Action/);
+  assert.match(workflowControlText, /Close Result/);
+  assert.match(workflowControlText, /record the `spawn_agent` id as Native Resource ID and `close_agent` as Close Action/);
+  assert.match(readmeText, /A native worker is not closed just because it returned a report/);
+  assert.match(readmeText, /Final outcome is blocked while any native worker lacks a close result/);
+});
+
 test("workflow-supervisor documents the complete intake question", () => {
   assert.match(skillText, /Before I start the supervisor loop, answer every intake item:/);
   assert.match(skillText, /1\. Objective and source: what artifact, spec, repo path, document, ticket, or source set controls the work\?/);
-  assert.match(skillText, /2\. Execution path: autonomous_goal or human_in_loop\?/);
-  assert.match(skillText, /3\. Mode: sequential, parallel where safe, or staged parallel\?/);
-  assert.match(skillText, /4\. Delegation: automated worker delegation, native threads\/subagents if available, or same-session phased\?/);
-  assert.match(skillText, /5\. Final disposition: keep local, open PR, push main, deploy\/publish, or ask at the end\?/);
-  assert.match(skillText, /6\. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files\?/);
-  assert.match(skillText, /7\. State artifacts: create `\.workflow\/` docs, use another artifact directory, or keep state inline\?/);
+  assert.match(skillText, /2\. Profile: lean_work_unit_runner, strict_full_workflow, or planning_only\?/);
+  assert.match(skillText, /3\. Execution path: autonomous_goal or human_in_loop\?/);
+  assert.match(skillText, /4\. Mode: sequential, parallel where safe, or staged parallel\?/);
+  assert.match(skillText, /5\. Delegation: same-session phased, automated worker delegation, or native threads\/subagents if available\?/);
+  assert.match(skillText, /6\. Final disposition: keep local, open PR, push main, deploy\/publish, or ask at the end\?/);
+  assert.match(skillText, /7\. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files\?/);
+  assert.match(skillText, /8\. State artifacts: compact ledger, `\.workflow\/` docs, another artifact directory, or inline state\?/);
 });
 
 test("workflow-supervisor intake does not offer manual handoff prompts as a delegation mode", () => {
@@ -114,9 +147,14 @@ test("workflow-supervisor keeps .workflow state out of git by default", () => {
 
 test("OpenAI metadata prompt preserves complete intake behavior", () => {
   assert.match(agentPrompt, /Use \$workflow-supervisor/);
-  assert.match(agentPrompt, /complete intake gate/i);
-  assert.match(agentPrompt, /Ask every required intake question/i);
-  assert.match(agentPrompt, /Do not infer or skip steps from keywords/i);
+  assert.match(agentPrompt, /select the execution profile first/i);
+  assert.match(agentPrompt, /lean_work_unit_runner/i);
+  assert.match(agentPrompt, /avoid subagents unless explicitly authorized/i);
+  assert.match(agentPrompt, /record each native resource id/i);
+  assert.match(agentPrompt, /close_agent/i);
+  assert.match(agentPrompt, /block final outcome if any native worker lacks a close result/i);
+  assert.match(agentPrompt, /Ask required intake questions/i);
+  assert.match(agentPrompt, /Do not infer path, mode, delegation, final disposition, or boundaries/i);
   assert.match(agentPrompt, /source-requirement coverage ledger and SPEC review gate/i);
   assert.match(agentPrompt, /do not hide unimplemented material requirements in residual risks or future work/i);
 });
@@ -174,6 +212,16 @@ test("workflow-docs defines SPEC.md as the human review artifact", () => {
   assert.match(workflowControlText, /Final Disposition/);
   assert.match(workflowControlText, /## Q&A Log/);
   assert.match(workflowControlText, /## Human Verification/);
+});
+
+test("workflow-docs defines a compact lean runner ledger", () => {
+  assert.match(workflowDocsText, /\.workflow\/LEDGER\.md/);
+  assert.match(workflowDocsText, /compact lean-runner state/);
+  assert.match(workflowControlText, /## LEDGER\.md/);
+  assert.match(workflowControlText, /Profile: lean_work_unit_runner/);
+  assert.match(workflowControlText, /Source Ref \| Scope \| Done Signal \| Check \| Status/);
+  assert.match(readmeText, /Lean mode keeps work units but removes per-unit ceremony/);
+  assert.match(readmeText, /same-session phased execution is the default/);
 });
 
 test("workflow-docs defines resume checkpoints for human decisions and blocked goals", () => {
@@ -250,6 +298,7 @@ test("screenshot prompt cannot start work because complete intake is missing", (
     nextAction: "ask_unanswered_intake_items_then_stop",
     missingDecisions: [
       "objective_and_source",
+      "profile",
       "execution_path",
       "mode",
       "delegation",
@@ -270,6 +319,7 @@ test("autonomy keywords do not skip the complete intake", () => {
     nextAction: "ask_unanswered_intake_items_then_stop",
     missingDecisions: [
       "objective_and_source",
+      "profile",
       "execution_path",
       "mode",
       "delegation",
@@ -284,6 +334,7 @@ test("partial intake repeats every missing item and still stops", () => {
   const result = evaluateIntakeCompletion(
     [
       "Objective and source: migrate docs in ./docs using docs/new-api.md as source.",
+      "Profile: strict_full_workflow.",
       "Execution path: human_in_loop.",
       "Mode: use your judgment.",
     ].join("\n"),
@@ -300,6 +351,7 @@ test("work can proceed only after every intake field has an explicit answer", ()
   const result = evaluateIntakeCompletion(
     [
       "Objective and source: create the cats API in ./outputs/cat-traits-api from this conversation.",
+      "Profile: strict_full_workflow.",
       "Execution path: autonomous_goal.",
       "Mode: sequential.",
       "Delegation: automated worker delegation.",
