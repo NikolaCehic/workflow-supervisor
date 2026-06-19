@@ -1,11 +1,27 @@
 ---
 name: workflow-supervisor
-description: Coordinate supervised workflows with profile-based overhead. Trigger whenever the user explicitly invokes workflow-supervisor, $workflow-supervisor, supervised workflow, lean work-unit runner, dossiers, work units, worker agents, handoffs, approval gates, durable resume, or workflow-state documentation. When explicitly invoked, first select the correct profile: lean_work_unit_runner for large already-bounded backlogs or low-footprint direct execution, strict_full_workflow for ambiguous/high-risk/source-of-truth/delegated work, or planning_only for intake and sequencing. Do not run strict ceremony just because the skill was named. When not explicitly invoked, use only for workflows with hard supervisor triggers such as multi-agent handoff, durable resume, high-risk verification, contradictory or missing sources, multi-unit scope, repair loops, approval gates, or workflow-state documentation.
+description: Coordinate supervised workflows with profile-based overhead. Trigger whenever the user explicitly invokes workflow-supervisor, $workflow-supervisor, supervised workflow, lean work-unit runner, dossiers, work units, worker agents, handoffs, approval gates, durable resume, or workflow-state documentation. Route first before profile selection. If not explicitly invoked and the work is a small clear edit with obvious files and acceptance, do not invoke Workflow Supervisor. Execute directly. When explicitly invoked, first select the correct profile: lean_work_unit_runner for large already-bounded backlogs or low-footprint direct execution, strict_full_workflow for ambiguous/high-risk/source-of-truth/delegated work, or planning_only for intake and sequencing. Do not run strict ceremony just because the skill was named. When not explicitly invoked, use only for workflows with hard supervisor triggers such as multi-agent handoff, durable resume, high-risk verification, contradictory or missing sources, multi-unit scope, repair loops, approval gates, or workflow-state documentation.
 ---
 
 # Workflow Supervisor
 
 Use this skill as the coordinating spine for supervised work. The supervisor owns decomposition, execution profile selection, loop discipline, stop gates, optional worker-agent handoff quality, and outcome reporting. It may do source discovery, implementation, focused verification, and reporting itself in lean mode. In strict mode, implementation, verification, repair-ticket writing, and documentation must be treated as separate worker-agent responsibilities when an automated worker path is available. Native threads, subagents, or the portable delegate command are transports for those worker agents.
+
+## Route First
+
+Before profile selection, decide whether this is supervisor work at all.
+
+If Workflow Supervisor was not explicitly invoked and the task is a small, clear edit with obvious files and acceptance, do not invoke this skill. Execute directly with normal repository inspection and the relevant check.
+
+When Workflow Supervisor is explicitly invoked, do not silently skip it. Select the proportional profile and keep the overhead as small as that profile allows.
+
+| Situation | Route |
+|---|---|
+| Small, clear edit with obvious files and acceptance | Do not use Workflow Supervisor. Execute directly. |
+| Large bounded backlog with clear unit done signals | `lean_work_unit_runner`. |
+| Broad, ambiguous, source-of-truth, delegated, security-sensitive, dirty-state, release, resume, or externally published work | `strict_full_workflow`. |
+| Sequencing, risk review, or backlog shaping only | `planning_only`. |
+| Runnable uncertainty before implementation | Create a discovery or prototype unit first. |
 
 ## Execution Profiles
 
