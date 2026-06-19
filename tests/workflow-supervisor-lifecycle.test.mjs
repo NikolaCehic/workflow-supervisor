@@ -13,6 +13,7 @@ const workflowDocsText = fs.readFileSync(path.join(repoRoot, "skills/workflow-do
 const workflowControlText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/workflow-control.md"), "utf8");
 const goalResumeText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/goal-resume.md"), "utf8");
 const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
+const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
 const agentPrompt = fs.readFileSync(
   path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
   "utf8",
@@ -116,6 +117,25 @@ test("workflow-supervisor requires native worker resources to be closed", () => 
   assert.match(workflowControlText, /record the `spawn_agent` id as Native Resource ID and `close_agent` as Close Action/);
   assert.match(readmeText, /A native worker is not closed just because it returned a report/);
   assert.match(readmeText, /Final outcome is blocked while any native worker lacks a close result/);
+});
+
+test("workflow-supervisor baseline hardening contract is preserved", () => {
+  assert.match(skillText, /lean_work_unit_runner/);
+  assert.match(skillText, /strict_full_workflow/);
+  assert.match(skillText, /planning_only/);
+  assert.match(skillText, /one compact ledger/);
+  assert.match(skillText, /source-requirement coverage ledger before work-unit finalization/);
+  assert.match(skillText, /Acceptance matrix or acceptance draft with evidence expectations/i);
+  assert.match(skillText, /Native Worker Resource Lifecycle/);
+  assert.match(skillText, /ensure `<workspace>\/\.gitignore` contains `\.workflow\/`/);
+  assert.match(readmeText, /overhead is profile-dependent/);
+  assert.match(readmeText, /coverage ledger is the guardrail against "green but incomplete" outcomes/);
+  assert.match(workflowControlText, /## LEDGER\.md/);
+  assert.match(workflowControlText, /## WORKER-MAP\.md/);
+  assert.match(workflowControlText, /Close Result/);
+  assert.match(troubleshootingText, /Unsupported external gauntlet summaries are not validation evidence/);
+  assert.match(troubleshootingText, /per-scenario reports, commands, artifacts, and expected outcomes/);
+  assert.match(troubleshootingText, /Use repo-native tests, fixtures, `npm run validate`, and live adapter probes/);
 });
 
 test("workflow-supervisor documents the complete intake question", () => {

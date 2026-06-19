@@ -33,6 +33,10 @@ Do not remove work units to make the process lean. If a unit cannot name its bou
 
 Treat this as a lifecycle bug, not a cosmetic cleanup task. A terminal report or completed notification does not close a native Codex subagent. Record every native worker id in `WORKER-MAP.md`, call the native close action such as `close_agent` after the terminal report or blocker is captured, and block the final outcome if any native worker lacks a close result. Prefer one-shot portable delegation when it satisfies the work.
 
+## Unsupported gauntlet summaries are used as proof
+
+Unsupported external gauntlet summaries are not validation evidence. Treat them as raw leads only unless they preserve per-scenario reports, commands, artifacts, and expected outcomes that another maintainer can inspect. Use repo-native tests, fixtures, `npm run validate`, and live adapter probes such as `workflow-supervisor delegate-doctor --agent all --probe --require-pass` for real confidence.
+
 ## Verification rubber-stamps the result
 
 Use `$acceptance-matrix` for formal evidence rows. A PASS requires row-by-row evidence or explicit waiver evidence.
