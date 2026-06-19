@@ -26,6 +26,8 @@ The dossier does not own acceptance design. It references or embeds acceptance r
 
 If these inputs are missing, create a discovery dossier or return BLOCKED.
 
+For bug-fix dossiers and risky behavior-change dossiers, include a red-capable feedback loop or explain why no correct loop exists. The `feedback_loop` field is optional in `DossierV1` during the compatibility phase, but `validate-dossier` emits warnings when risky work omits it.
+
 Before delegation, validate the dossier with:
 
 ```bash
@@ -66,6 +68,13 @@ reviewers:
 acceptance_matrix:
 adversarial_checks:
 required_commands_or_evidence:
+feedback_loop:
+  command_or_evidence:
+  red_capable: yes | no | not_applicable
+  exact_symptom_or_behavior:
+  deterministic: yes | no
+  expected_runtime:
+  agent_runnable: yes | no
 worker_role:
 worker_prompt:
 supervisor_checkpoints:
@@ -85,6 +94,7 @@ The machine gate requires concrete strings or arrays for the core fields. Use `o
 - Include forbidden surfaces even when the worker seems trustworthy.
 - Convert unknowns into open questions, not hidden assumptions.
 - Include adversarial checks for malformed input, stale state, authorization, schema drift, replay, no-op implementation, and untrusted sources when relevant.
+- For bug fixes and risky behavior changes, require a feedback loop that would catch the exact symptom or behavior. A related build, lint, or broad test run is not enough unless waiver evidence accepts it as substitute evidence.
 - Require workers to report skipped checks and assumptions.
 - For non-code work, use evidence such as citations, before/after excerpts, review rubrics, examples, artifact diffs, or explicit user decisions instead of commands.
 - Require repair tickets to cite the verification finding or acceptance row they repair.

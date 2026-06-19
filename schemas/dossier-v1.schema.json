@@ -114,6 +114,44 @@
     "required_commands_or_evidence": {
       "$ref": "#/$defs/stringList"
     },
+    "feedback_loop": {
+      "type": "object",
+      "required": [
+        "command_or_evidence",
+        "red_capable",
+        "exact_symptom_or_behavior",
+        "deterministic",
+        "expected_runtime",
+        "agent_runnable"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "command_or_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "red_capable": {
+          "type": "string",
+          "enum": ["yes", "no", "not_applicable"]
+        },
+        "exact_symptom_or_behavior": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deterministic": {
+          "type": "string",
+          "enum": ["yes", "no"]
+        },
+        "expected_runtime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_runnable": {
+          "type": "string",
+          "enum": ["yes", "no"]
+        }
+      }
+    },
     "supervisor_checkpoints": {
       "$ref": "#/$defs/stringList"
     },

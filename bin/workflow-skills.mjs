@@ -483,6 +483,7 @@ function parseSimpleYaml(text) {
     }
 
     const items = [];
+    const object = {};
     for (i += 1; i < lines.length; i += 1) {
       const next = lines[i];
       if (!next.trim() || next.trimStart().startsWith("#")) continue;
@@ -492,8 +493,10 @@ function parseSimpleYaml(text) {
       }
       const item = next.match(/^\s*-\s*(.*)$/);
       if (item) items.push(unquoteScalar(item[1]));
+      const property = next.match(/^\s+([A-Za-z_][A-Za-z0-9_-]*):(?:\s*(.*))?$/);
+      if (property) object[property[1]] = parseDossierScalar(property[2] || "");
     }
-    result[key] = items.length > 0 ? items : "";
+    result[key] = items.length > 0 ? items : Object.keys(object).length > 0 ? object : "";
   }
   return result;
 }
@@ -556,6 +559,14 @@ const DOSSIER_CORE_ARRAY_FIELDS = [
 ];
 
 const DOSSIER_EXPLICIT_ARRAY_FIELDS = ["assumptions", "open_questions"];
+const FEEDBACK_LOOP_FIELDS = [
+  "command_or_evidence",
+  "red_capable",
+  "exact_symptom_or_behavior",
+  "deterministic",
+  "expected_runtime",
+  "agent_runnable",
+];
 
 function isPlaceholder(value, { allowNone = false } = {}) {
   const normalized = String(value || "").trim().toLowerCase().replace(/[.!]+$/, "");
@@ -582,6 +593,61 @@ function validateConcreteArray(data, field, errors, options = {}) {
     if (isPlaceholder(item, options)) errors.push(`${field}[${index}] is not concrete: ${item || "<empty>"}`);
   });
   return values;
+}
+
+function dossierSearchText(data) {
+  return [
+    data.workflow,
+    data.work_unit,
+    data.title,
+    data.objective,
+    ...fieldArray(data.work_points),
+    ...fieldArray(data.acceptance_matrix),
+    ...fieldArray(data.adversarial_checks),
+    ...fieldArray(data.required_commands_or_evidence),
+    ...fieldArray(data.stop_gates),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function dossierNeedsFeedbackLoop(data) {
+  return /\b(bug|fix|regression|defect|broken|crash|error|failure|failing|risky behavior|behavior change|behaviour change|change behavior|change behaviour)\b/.test(
+    dossierSearchText(data),
+  );
+}
+
+function validateFeedbackLoop(data, warnings) {
+  const loop = data.feedback_loop;
+  const needsLoop = dossierNeedsFeedbackLoop(data);
+  if (!loop) {
+    if (needsLoop) {
+      warnings.push("feedback_loop is recommended for bug-fix or risky behavior-change dossiers");
+    }
+    return;
+  }
+
+  if (typeof loop !== "object" || Array.isArray(loop)) {
+    warnings.push("feedback_loop should be an object with command_or_evidence, red_capable, exact_symptom_or_behavior, deterministic, expected_runtime, and agent_runnable");
+    return;
+  }
+
+  for (const field of FEEDBACK_LOOP_FIELDS) {
+    if (isPlaceholder(loop[field])) warnings.push(`feedback_loop.${field} should be concrete`);
+  }
+
+  if (loop.red_capable && !["yes", "no", "not_applicable"].includes(String(loop.red_capable))) {
+    warnings.push("feedback_loop.red_capable should be yes, no, or not_applicable");
+  }
+  if (loop.deterministic && !["yes", "no"].includes(String(loop.deterministic))) {
+    warnings.push("feedback_loop.deterministic should be yes or no");
+  }
+  if (loop.agent_runnable && !["yes", "no"].includes(String(loop.agent_runnable))) {
+    warnings.push("feedback_loop.agent_runnable should be yes or no");
+  }
+  if (needsLoop && String(loop.red_capable) !== "yes") {
+    warnings.push("bug-fix or risky behavior-change dossiers should name a red-capable feedback loop or explicit waiver");
+  }
 }
 
 function validateDossierData(data, { role, unitId } = {}) {
@@ -648,6 +714,8 @@ function validateDossierData(data, { role, unitId } = {}) {
   fieldArray(data.acceptance_matrix).forEach((row, index) => {
     if (!/\b[A-Z]+[0-9]+\b/.test(row)) warnings.push(`acceptance_matrix[${index}] should include a stable row ID`);
   });
+
+  validateFeedbackLoop(data, warnings);
 
   const unresolved = fieldArray(data.open_questions).filter((item) => !/^(none|no open questions|empty)$/i.test(item));
   if (unresolved.length > 0) {

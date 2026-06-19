@@ -9,6 +9,7 @@ const skillText = fs.readFileSync(path.join(repoRoot, "skills/workflow-superviso
 const loopPolicyText = fs.readFileSync(path.join(repoRoot, "skills/loop-policy/SKILL.md"), "utf8");
 const workUnitText = fs.readFileSync(path.join(repoRoot, "skills/work-unit/SKILL.md"), "utf8");
 const acceptanceText = fs.readFileSync(path.join(repoRoot, "skills/acceptance-matrix/SKILL.md"), "utf8");
+const dossierBuilderText = fs.readFileSync(path.join(repoRoot, "skills/dossier-builder/SKILL.md"), "utf8");
 const workflowDocsText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/SKILL.md"), "utf8");
 const workflowControlText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/workflow-control.md"), "utf8");
 const goalResumeText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/goal-resume.md"), "utf8");
@@ -16,6 +17,7 @@ const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
 const artifactsText = fs.readFileSync(path.join(repoRoot, "docs/artifacts.md"), "utf8");
 const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
 const skillReferenceText = fs.readFileSync(path.join(repoRoot, "docs/skill-reference.md"), "utf8");
+const dossierSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/dossier-v1.schema.json"), "utf8");
 const agentPrompt = fs.readFileSync(
   path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
   "utf8",
@@ -345,6 +347,28 @@ test("acceptance-matrix preserves source requirement strength and rejects residu
   assert.match(acceptanceText, /source requirement weakened or omitted/);
   assert.match(acceptanceText, /roadmap exit criteria demoted to future work/);
   assert.match(acceptanceText, /material requirement hidden in residual risks/);
+});
+
+test("acceptance and dossiers require red-capable feedback loops for risky behavior", () => {
+  assert.match(acceptanceText, /Bug fixes and risky behavior changes require a red-capable feedback loop/);
+  assert.match(acceptanceText, /feedback_loop:/);
+  assert.match(acceptanceText, /red_capable: yes \| no \| not_applicable/);
+  assert.match(acceptanceText, /behavior_was_tested/);
+  assert.match(acceptanceText, /related_check_ran/);
+  assert.match(acceptanceText, /substitute_evidence_accepted/);
+  assert.match(acceptanceText, /If no correct test surface exists, record that as an architecture or verification finding/);
+  assert.match(dossierBuilderText, /validate-dossier` emits warnings when risky work omits it/);
+  assert.match(dossierBuilderText, /A related build, lint, or broad test run is not enough/);
+  assert.match(skillText, /the focused check must be red-capable or explicitly waived/);
+  assert.match(skillText, /Classify evidence as `behavior_was_tested`, `related_check_ran`, or `substitute_evidence_accepted`/);
+  assert.match(skillText, /Treat PASS without a behavior-catching loop as BLOCKED/);
+  assert.match(workflowControlText, /## Feedback Loop/);
+  assert.match(workflowControlText, /Evidence Classification/);
+  assert.match(troubleshootingText, /Bug fix passes with only related checks/);
+  assert.match(troubleshootingText, /Do not hide this as a skipped check in a PASS report/);
+  assert.match(dossierSchemaText, /"feedback_loop"/);
+  assert.match(dossierSchemaText, /"command_or_evidence"/);
+  assert.match(dossierSchemaText, /"red_capable"/);
 });
 
 test("README documents the coverage ledger as the green-but-incomplete guardrail", () => {

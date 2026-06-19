@@ -250,6 +250,16 @@ For each unit, record:
 
 ## Quality Or Risk Checks
 
+## Feedback Loop
+
+    feedback_loop:
+      command_or_evidence:
+      red_capable: yes | no | not_applicable
+      exact_symptom_or_behavior:
+      deterministic: yes | no
+      expected_runtime:
+      agent_runnable: yes | no
+
 ## Required Checks Or Evidence
 
 ## Owner Or Contributor Role
@@ -287,12 +297,14 @@ Closed means the terminal report has been consumed and any native thread or suba
 ```md
 # Acceptance Matrix
 
-| ID | Requirement | Evidence Required | Verification Method | Adversarial Check | Status | Evidence |
-|---|---|---|---|---|---|---|
+| ID | Requirement | Evidence Required | Verification Method | Feedback Loop | Evidence Classification | Adversarial Check | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|
 
 ## Residual Risks
 
 ## Waivers
+
+## Verification Findings
 ```
 
 ## VERIFICATION-REPORT.md

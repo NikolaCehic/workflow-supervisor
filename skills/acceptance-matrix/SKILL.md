@@ -22,6 +22,7 @@ This skill owns evidence rows and supervisor verdict mapping. `$work-unit` may d
 - BLOCKED applies when evidence cannot be obtained or sources conflict.
 - Residual risks must not be hidden inside PASS.
 - If residual risks, skipped checks, future work, or next recommended actions contain an unimplemented material source requirement, the matrix status is FAIL or BLOCKED, not PASS.
+- Bug fixes and risky behavior changes require a red-capable feedback loop, or an explicit waiver explaining why no correct loop exists.
 
 ## Source Fidelity Rules
 
@@ -46,12 +47,36 @@ If a requirement cannot be verified in the current environment, mark it BLOCKED 
 
 ## Row Shape
 
-| ID | Source Ref | Requirement | Evidence Required | Verification Method | Adversarial Check | Status | Evidence |
-|---|---|---|---|---|---|---|---|
+| ID | Source Ref | Requirement | Evidence Required | Verification Method | Feedback Loop | Evidence Classification | Adversarial Check | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|---|
 
 Use statuses: Pending, PASS, FAIL, BLOCKED, Waived.
 
 For documentation and review workflows, also record a domain-specific review state when useful: Needs Revision, Approved With Caveats, Ready To Publish, SME Review Needed, Legal Review Needed, Stale, or Deferred. Map it back to PASS/FAIL/BLOCKED for supervisor decisions.
+
+## Red-Capable Feedback Loops
+
+For bug fixes and risky behavior changes, each material acceptance row must name a feedback loop:
+
+```yaml
+feedback_loop:
+  command_or_evidence:
+  red_capable: yes | no | not_applicable
+  exact_symptom_or_behavior:
+  deterministic: yes | no
+  expected_runtime:
+  agent_runnable: yes | no
+```
+
+`red_capable: yes` means the loop would have failed, or visibly shown the wrong behavior, before the fix. A related check is not red-capable unless it catches the exact symptom or behavior under review.
+
+Classify every row's evidence as one of:
+
+- `behavior_was_tested`: a red-capable command, test, UI state, artifact check, or reviewer action exercised the exact behavior.
+- `related_check_ran`: a nearby test, build, lint, static check, or inspection ran but does not catch the exact behavior by itself.
+- `substitute_evidence_accepted`: the correct loop is unavailable and the user or governing source accepted substitute evidence.
+
+For bug fixes and risky behavior changes, PASS requires `behavior_was_tested` or `substitute_evidence_accepted` with waiver evidence. If no correct test surface exists, record that as an architecture or verification finding. Do not turn it into a quiet skipped check.
 
 ## Adversarial Checks
 

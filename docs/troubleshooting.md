@@ -47,6 +47,12 @@ Unsupported external gauntlet summaries are not validation evidence. Treat them 
 
 Use `$acceptance-matrix` for formal evidence rows. A PASS requires row-by-row evidence or explicit waiver evidence.
 
+## Bug fix passes with only related checks
+
+A related build, lint, broad test run, or inspection is not enough for a bug fix or risky behavior change unless it would catch the exact symptom. Add a red-capable feedback loop with the command, artifact, UI state, or manual check that would fail before the fix and pass after it.
+
+If no correct test surface exists, record an architecture or verification finding and either block the row or get explicit substitute-evidence waiver from the user. Do not hide this as a skipped check in a PASS report.
+
 ## A broad roadmap becomes one giant work unit
 
 Use the source-requirement coverage gate before work-unit finalization. Every material roadmap item, exit criterion, named integration, and numeric target should be mapped to a unit and acceptance row, explicitly deferred by the user, blocked for a decision, or marked non-material with a reason. Do not accept "future work" or residual risk notes as a substitute for work units.

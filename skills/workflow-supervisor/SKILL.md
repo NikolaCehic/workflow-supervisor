@@ -91,6 +91,8 @@ Escalate a lean unit to `strict_full_workflow` or pause for human review when:
 
 Lean verification is proportional. Use `focused-check` for the unit or batch. Use `independent-verifier` only when a risk trigger or user instruction justifies the extra cost. A lean PASS requires the ledger to show every completed unit's source reference, done signal, check or substitute evidence, and touched surfaces.
 
+For bug fixes and risky behavior changes, the focused check must be red-capable or explicitly waived. A red-capable loop catches the exact symptom or behavior, not merely a related build, lint, or broad test. If no correct test surface exists, record an architecture or verification finding instead of a quiet skipped check.
+
 ### Strict Full Workflow
 
 Strict mode always requires:
@@ -231,6 +233,7 @@ When the human answers:
 - Do not begin strict implementation until complete intake and the path gate are satisfied, at least one work unit exists, at least one concrete dossier exists, worker-agent contracts exist, and no stop gate applies.
 - Do not begin lean implementation until the scope contract is recorded, the backlog contains at least one ready unit, the compact ledger exists or can be kept inline, the current unit has source reference, scope, done signal, and check, and no escalation gate applies.
 - Do not begin product or integration implementation from a vague horizontal phase. Prefer a tracer-bullet unit with observable behavior and demo or verification; allow horizontal units only for prefactoring, migration, infrastructure, documentation, research, or risk-boundary work with a justification.
+- Do not mark a bug fix or risky behavior change PASS unless acceptance rows name a red-capable feedback loop, or the user explicitly accepts substitute evidence.
 - Delegate workers only through an automated supported delegation transport after complete intake and the path gate authorize delegation. If no supported transport exists, use same-session phased mode only when intake allowed it; otherwise stop as `worker_agent_unavailable`.
 - Do not start implementer, verifier, repair-author, or documenter workers before complete intake and the path gate are satisfied; role-specific start conditions are additional gates after that.
 - Do not use native thread or native subagent workers unless the environment exposes a close operation for that transport. For Codex subagents, the supervisor must call `close_agent` for every `spawn_agent` id after the worker reaches a terminal report, times out, blocks, fails validation, is cancelled, or is no longer needed.
@@ -366,6 +369,9 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 18. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema. For native threads or subagents, record the native resource id immediately and confirm a close operation exists before starting more workers.
 19. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits. For native threads or subagents, close the native resource after the report or blocker is captured.
 20. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
+   - For bug fixes and risky behavior changes, require a feedback loop with `command_or_evidence`, `red_capable`, `exact_symptom_or_behavior`, `deterministic`, `expected_runtime`, and `agent_runnable`.
+   - Classify evidence as `behavior_was_tested`, `related_check_ran`, or `substitute_evidence_accepted`.
+   - Treat PASS without a behavior-catching loop as BLOCKED unless waiver evidence accepts substitute evidence.
 21. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
 22. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
 23. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
@@ -511,6 +517,7 @@ Stop when:
 - mandatory approval packet, work unit, dossier, worker-agent contract, or acceptance matrix is missing
 - allowed and forbidden surfaces cannot be named
 - acceptance cannot be verified with evidence
+- a bug fix or risky behavior change has only related checks and no red-capable feedback loop or explicit substitute-evidence waiver
 - a verifier is asked to edit or an implementer is asked to self-approve
 - repair loops repeat without new evidence
 - the user requires approval before continuing

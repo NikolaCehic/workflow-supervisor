@@ -261,6 +261,37 @@ test("validate-dossier accepts a concrete DossierV1 file", () => {
   assert.deepEqual(report.errors, []);
 });
 
+test("validate-dossier warns for risky behavior changes without feedback_loop", () => {
+  const cwd = tempDir();
+  const risky = dossierText("implementer", "U5").replace(
+    "objective: Exercise delegate test behavior with a concrete bounded unit.",
+    "objective: Fix login bug with a concrete behavior-catching test.",
+  );
+  const riskyFile = writeDossier(cwd, risky);
+  const riskyResult = runRaw(["validate-dossier", riskyFile, "--role", "implementer", "--unit", "U5", "--json"], cwd);
+  assert.equal(riskyResult.status, 0, riskyResult.stderr);
+  const riskyReport = JSON.parse(riskyResult.stdout);
+  assert.equal(riskyReport.valid, true);
+  assert.ok(riskyReport.warnings.some((warning) => warning.includes("feedback_loop is recommended")));
+
+  const withLoop = [
+    risky,
+    "feedback_loop:",
+    "  command_or_evidence: node --test tests/login.test.mjs",
+    "  red_capable: yes",
+    "  exact_symptom_or_behavior: login rejects valid credentials before the fix",
+    "  deterministic: yes",
+    "  expected_runtime: under 30 seconds",
+    "  agent_runnable: yes",
+  ].join("\n");
+  const withLoopFile = writeDossier(cwd, withLoop);
+  const withLoopResult = runRaw(["validate-dossier", withLoopFile, "--role", "implementer", "--unit", "U5", "--json"], cwd);
+  assert.equal(withLoopResult.status, 0, withLoopResult.stderr);
+  const withLoopReport = JSON.parse(withLoopResult.stdout);
+  assert.equal(withLoopReport.valid, true);
+  assert.ok(withLoopReport.warnings.every((warning) => !warning.includes("feedback_loop")));
+});
+
 test("validate-dossier rejects vague surfaces and unresolved questions", () => {
   const cwd = tempDir();
   const bad = dossierText("implementer", "U6")
