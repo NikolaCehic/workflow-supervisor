@@ -44,4 +44,6 @@ Markdown is the default, but state may also be an inline brief, spreadsheet tab,
 
 For `lean_work_unit_runner`, prefer one compact ledger over multiple workflow documents. Each executable row should carry `id`, `source_ref`, `scope`, `done`, `check`, `status`, touched surfaces, and blockers. Escalated units may link to strict-mode SPEC, dossier, or verification artifacts only when needed.
 
+For product or integration implementation, `WORK-UNITS.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification` where useful. Prefer `tracer_bullet` units for behavior work. Use horizontal slices only for prefactoring, migration safety, infrastructure, documentation, research, or risk-boundary work with a concrete justification.
+
 For native thread or subagent delegation, `WORKER-MAP.md` must record the native resource id, terminal report, close action, and close result. Do not mark a native worker closed until the resource close is recorded.

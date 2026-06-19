@@ -11,12 +11,42 @@ Use this skill to make work small enough that another agent can complete and ver
 
 Work units can be bounded by code package, document section, source set, stakeholder decision, research question, design screen, workflow step, data slice, risk class, or output artifact. Do not force repository terminology onto non-code work.
 
+## Product And Integration Slices
+
+When work describes user-facing behavior or integration behavior, prefer tracer-bullet work units. A tracer-bullet unit cuts through the smallest useful set of layers needed to make one behavior observable, demonstrable, and verifiable.
+
+Use `slice_type: tracer_bullet` for product implementation that can expose behavior to a user, API caller, integration partner, workflow operator, evaluator, or verifier.
+
+Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency that cannot yet be verified as behavior. Use one of these non-product slice types when a tracer bullet is not the right shape:
+
+- `prefactor`
+- `migration`
+- `research`
+- `document`
+- `risk_boundary`
+
+Every product or integration implementation unit must name:
+
+```yaml
+slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary
+observable_behavior:
+demo_or_verification:
+layers_touched:
+horizontal_slice_justification:
+```
+
+For `tracer_bullet`, `observable_behavior` and `demo_or_verification` are required and `layers_touched` should name the smallest layers needed for that behavior. For horizontal or non-product slice types, set `observable_behavior` to `not_applicable` only when the unit names a concrete `horizontal_slice_justification`.
+
+Reject vague horizontal feature phases such as "backend foundation", "frontend pass", "data model work", or "integration prep" unless the unit has a valid non-product `slice_type`, a concrete dependency it unlocks, and a verification method for that slice.
+
 ## Unit Quality Bar
 
 A good work unit has:
 
 - one objective
 - a stable unit ID suitable for dossier and worker naming
+- a `slice_type` that matches the work shape
+- observable behavior and demo or verification for product or integration behavior
 - named dependencies
 - explicit in-scope and out-of-scope surfaces
 - known sources or source gaps
@@ -34,12 +64,13 @@ Work-unit drafts coarse done criteria only. Use `$acceptance-matrix` when those 
 
 1. Restate the parent objective.
 2. Identify natural boundaries: user workflow, package, document, API contract, risk class, or dependency layer.
-3. Split into units that can be verified independently.
-4. Mark dependencies and ordering constraints.
-5. Mark which units can run in parallel only when they do not mutate the same surfaces.
-6. Define readiness and done criteria for each unit.
-7. If sources are absent, create a discovery/intake unit before production work.
-8. Identify the first unit that is safe to dossier.
+3. For product or integration behavior, split into tracer-bullet units before horizontal layers.
+4. Split remaining work into units that can be verified independently.
+5. Mark dependencies and ordering constraints.
+6. Mark which units can run in parallel only when they do not mutate the same surfaces.
+7. Define readiness and done criteria for each unit.
+8. If sources are absent, create a discovery/intake unit before production work.
+9. Identify the first unit that is safe to dossier.
 
 For over-broad one-pass requests, produce a sequencing recommendation and invoke or mirror `$loop-policy` fields for mode, parallel safety, approval gates, and repair limits.
 
@@ -69,6 +100,11 @@ units:
     worker_slug:
     title:
     objective:
+    slice_type:
+    observable_behavior:
+    demo_or_verification:
+    layers_touched:
+    horizontal_slice_justification:
     in_scope:
     out_of_scope:
     dependencies:
@@ -89,3 +125,5 @@ first_recommended_unit:
 ## Stop Gates
 
 Stop when a unit cannot name a done criterion, required source, or boundary. Ask for a decision or return a smaller discovery unit.
+
+Stop when a product or integration implementation unit lacks `observable_behavior` or `demo_or_verification`. Return a tracer-bullet split instead of a horizontal phase unless the unit has a valid non-product `slice_type` and `horizontal_slice_justification`.

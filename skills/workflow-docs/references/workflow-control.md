@@ -80,8 +80,8 @@ Escalation Triggers:
 
 ## Units
 
-| ID | Source Ref | Scope | Done Signal | Check | Status | Touched Surfaces | Evidence | Blocker Or Next Action |
-|---|---|---|---|---|---|---|---|---|
+| ID | Source Ref | Slice Type | Scope | Observable Behavior | Done Signal | Check | Status | Touched Surfaces | Evidence | Blocker Or Next Action |
+|---|---|---|---|---|---|---|---|---|---|---|
 
 ## Batch Checkpoints
 
@@ -192,8 +192,19 @@ Notes:
 ```md
 # Work Units
 
-| ID | Worker Slug | Title | Objective | Dependencies | Status | Verification |
-|---|---|---|---|---|---|---|
+| ID | Worker Slug | Title | Slice Type | Observable Behavior | Demo Or Verification | Dependencies | Status | Verification |
+|---|---|---|---|---|---|---|---|---|
+
+## Unit Slice Details
+
+For each unit, record:
+
+    id:
+    slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary
+    observable_behavior:
+    demo_or_verification:
+    layers_touched:
+    horizontal_slice_justification:
 
 ## Sequencing
 

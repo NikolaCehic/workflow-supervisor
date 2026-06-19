@@ -55,7 +55,9 @@ Lean mode requires a backlog where each executable unit has:
 ```yaml
 id:
 source_ref:
+slice_type:
 scope:
+observable_behavior:
 done:
 check:
 status: pending | active | pass | fail | blocked | escalated
@@ -63,6 +65,8 @@ notes:
 ```
 
 Do not start a lean unit unless its boundary and done signal are clear. If a unit lacks `scope`, `done`, or `check`, mark it `blocked` and ask for the smallest missing decision, or split it into smaller units. Do not hide ambiguity in notes.
+
+For product or integration behavior, prefer tracer-bullet units that expose one observable behavior across the smallest useful set of layers. A product implementation unit must name `observable_behavior` and `demo_or_verification`, or explicitly use a non-product `slice_type` such as `prefactor`, `migration`, `research`, `document`, or `risk_boundary` with a `horizontal_slice_justification`.
 
 Lean per-unit loop:
 
@@ -139,6 +143,8 @@ Do not weaken requirements while translating them into units or acceptance rows.
 Treat roadmap phases, source "Build" lists, and exit criteria as material when the user says the source is the source of truth, asks to implement everything, or does not explicitly narrow the scope. If the user wants only a first slice, record every non-slice material item as `explicit_user_deferred`; otherwise create work units for it or stop as `blocked_needs_decision`.
 
 Create exactly one implementation work unit only when all current-scope material requirements can be implemented and verified inside that one unit without hiding source requirements in residual risks, skipped checks, future work, or next recommended actions. For multi-phase, dependency-heavy, or roadmap-driven work, create one work unit per independently verifiable phase, integration, data slice, or risk boundary.
+
+For user-facing behavior or integration behavior, make work units tracer-bullet shaped by default. Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency that cannot yet be verified as behavior, and they must include a horizontal-slice justification.
 
 Before final closeout, audit the coverage ledger. The workflow may be PASS only when every material requirement is mapped to a PASS acceptance row, explicitly waived by the user, or blocked and reported as not complete.
 
@@ -224,6 +230,7 @@ When the human answers:
 - Always produce a plan after complete intake. In `human_in_loop`, make it an approval packet and stop for approval. In `autonomous_goal`, make it an execution plan and continue only when the completed intake authorizes that path.
 - Do not begin strict implementation until complete intake and the path gate are satisfied, at least one work unit exists, at least one concrete dossier exists, worker-agent contracts exist, and no stop gate applies.
 - Do not begin lean implementation until the scope contract is recorded, the backlog contains at least one ready unit, the compact ledger exists or can be kept inline, the current unit has source reference, scope, done signal, and check, and no escalation gate applies.
+- Do not begin product or integration implementation from a vague horizontal phase. Prefer a tracer-bullet unit with observable behavior and demo or verification; allow horizontal units only for prefactoring, migration, infrastructure, documentation, research, or risk-boundary work with a justification.
 - Delegate workers only through an automated supported delegation transport after complete intake and the path gate authorize delegation. If no supported transport exists, use same-session phased mode only when intake allowed it; otherwise stop as `worker_agent_unavailable`.
 - Do not start implementer, verifier, repair-author, or documenter workers before complete intake and the path gate are satisfied; role-specific start conditions are additional gates after that.
 - Do not use native thread or native subagent workers unless the environment exposes a close operation for that transport. For Codex subagents, the supervisor must call `close_agent` for every `spawn_agent` id after the worker reaches a terminal report, times out, blocks, fails validation, is cancelled, or is no longer needed.
@@ -334,7 +341,7 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 4. If the profile is `lean_work_unit_runner`, run the lean loop:
    - Confirm the source contains bounded work units or create a short upfront backlog contract. If not possible, pause for a decision or switch to `planning_only` or `strict_full_workflow`.
    - Create or select one compact ledger instead of full workflow docs.
-   - Verify each ready unit has `id`, `source_ref`, `scope`, `done`, `check`, and `status`.
+   - Verify each ready unit has `id`, `source_ref`, `slice_type`, `scope`, `done`, `check`, and `status`; product or integration units also need `observable_behavior` and `demo_or_verification`.
    - Present a concise batch plan in `human_in_loop`, or continue in `autonomous_goal` when intake permits it.
    - Execute one unit at a time with targeted inspection, smallest patch, focused check, ledger update, and checkpoint cadence.
    - Escalate only the affected unit or batch when a strict-mode trigger appears; do not convert the whole backlog to strict mode unless the source contract is invalid.
@@ -345,7 +352,7 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 8. Create the source-requirement coverage ledger. If any material source requirement cannot be classified, mapped to work, or explicitly deferred, stop and ask for the missing scope decision.
 9. Create the SPEC review packet or `.workflow/SPEC.md` from the source corpus and coverage ledger.
 10. Run the SPEC Q&A gate. In `human_in_loop`, stop until the human asks questions, receives answers or revisions, and explicitly approves the SPEC. In `autonomous_goal`, continue only when no blocking questions remain and approval is not required by intake.
-11. Split the objective into bounded work units from the approved or non-blocked SPEC and coverage ledger. Use `$work-unit` for ambiguous or multi-phase goals. If the task is tiny and the ledger has no deferred material requirements, create exactly one work unit named `WU-001`.
+11. Split the objective into bounded work units from the approved or non-blocked SPEC and coverage ledger. Use `$work-unit` for ambiguous, multi-phase, product, or integration goals. Prefer tracer-bullet units for user-facing or integration behavior. If the task is tiny and the ledger has no deferred material requirements, create exactly one work unit named `WU-001`.
 12. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
 13. Build dossiers for the first implementation units and any planned verification, repair, or documentation workers. Use `$dossier-builder` when delegating work to another agent or when the task has boundaries.
 14. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent, native-thread, or portable-worker work.
@@ -496,6 +503,7 @@ Stop when:
 - sources contradict each other on a material requirement
 - the requested scope cannot fit into a bounded work unit
 - `lean_work_unit_runner` is selected but the backlog lacks clear unit ids, source references, boundaries, done signals, or targeted checks
+- a product or integration unit is a vague horizontal phase without observable behavior, demo or verification, valid non-product slice type, or horizontal-slice justification
 - `lean_work_unit_runner` finds a strict-mode risk trigger and the user has not authorized escalation, deferral, or a narrower unit
 - the coverage ledger is missing, incomplete, or contains material requirements classified as future work without explicit user deferral
 - human-in-loop SPEC approval is missing, marked Needs Revision, marked Blocked, or has unanswered Q&A

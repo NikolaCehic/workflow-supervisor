@@ -13,6 +13,7 @@ const workflowDocsText = fs.readFileSync(path.join(repoRoot, "skills/workflow-do
 const workflowControlText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/workflow-control.md"), "utf8");
 const goalResumeText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/goal-resume.md"), "utf8");
 const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
+const artifactsText = fs.readFileSync(path.join(repoRoot, "docs/artifacts.md"), "utf8");
 const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
 const skillReferenceText = fs.readFileSync(path.join(repoRoot, "docs/skill-reference.md"), "utf8");
 const agentPrompt = fs.readFileSync(
@@ -267,7 +268,7 @@ test("workflow-docs defines a compact lean runner ledger", () => {
   assert.match(workflowDocsText, /compact lean-runner state/);
   assert.match(workflowControlText, /## LEDGER\.md/);
   assert.match(workflowControlText, /Profile: lean_work_unit_runner/);
-  assert.match(workflowControlText, /Source Ref \| Scope \| Done Signal \| Check \| Status/);
+  assert.match(workflowControlText, /Source Ref \| Slice Type \| Scope \| Observable Behavior \| Done Signal \| Check \| Status/);
   assert.match(readmeText, /Lean mode keeps work units but removes per-unit ceremony/);
   assert.match(readmeText, /same-session phased execution is the default/);
 });
@@ -314,6 +315,26 @@ test("work-unit guard prevents broad roadmap collapse into a single WU", () => {
   assert.match(workUnitText, /Create exactly one `WU-001` only when the task is genuinely tiny/);
   assert.match(workUnitText, /source_requirements_covered/);
   assert.match(workUnitText, /deferred_or_out_of_scope_requirements/);
+});
+
+test("work-unit prefers tracer-bullet slices for product and integration behavior", () => {
+  assert.match(workUnitText, /## Product And Integration Slices/);
+  assert.match(workUnitText, /prefer tracer-bullet work units/);
+  assert.match(workUnitText, /slice_type: tracer_bullet \| prefactor \| migration \| research \| document \| risk_boundary/);
+  assert.match(workUnitText, /observable_behavior:/);
+  assert.match(workUnitText, /demo_or_verification:/);
+  assert.match(workUnitText, /layers_touched:/);
+  assert.match(workUnitText, /horizontal_slice_justification:/);
+  assert.match(workUnitText, /Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency/);
+  assert.match(workUnitText, /Reject vague horizontal feature phases/);
+  assert.match(workUnitText, /Stop when a product or integration implementation unit lacks `observable_behavior` or `demo_or_verification`/);
+  assert.match(skillText, /prefer tracer-bullet units that expose one observable behavior/);
+  assert.match(skillText, /product implementation unit must name `observable_behavior` and `demo_or_verification`/);
+  assert.match(skillText, /Do not begin product or integration implementation from a vague horizontal phase/);
+  assert.match(skillText, /a product or integration unit is a vague horizontal phase without observable behavior/);
+  assert.match(workflowControlText, /Slice Type \| Observable Behavior \| Demo Or Verification/);
+  assert.match(workflowControlText, /horizontal_slice_justification:/);
+  assert.match(artifactsText, /WORK-UNITS\.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification`/);
 });
 
 test("acceptance-matrix preserves source requirement strength and rejects residual-risk hiding", () => {
