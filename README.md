@@ -10,9 +10,25 @@ Example prompt:
 Use $workflow-supervisor to build a FastAPI Naive RAG demo for a healthcare specialist agent.
 ```
 
-The correct first response is not code. The correct first response is an intake packet. That is intentional.
+When you explicitly ask for Workflow Supervisor, the correct first response is not code. The correct first response is an intake packet. That is intentional.
 
 ![Workflow Supervisor hero image showing the supervisor coordinating source corpus, work units, dossiers, roles, loop policy, acceptance, repair, workflow docs, and final outputs](assets/workflow-supervisor-hero.png)
+
+## Route First
+
+Use the smallest route that fits the work before choosing a profile.
+
+| Situation | Route |
+|---|---|
+| Small, clear edit with obvious files and acceptance | Do not use Workflow Supervisor. Execute directly. |
+| Large bounded backlog with clear unit done signals | `lean_work_unit_runner`. |
+| Broad, ambiguous, source-of-truth, delegated, security-sensitive, dirty-state, release, resume, or externally published work | `strict_full_workflow`. |
+| Sequencing, risk review, or backlog shaping only | `planning_only`. |
+| Runnable uncertainty before implementation | Create a discovery or prototype unit first. |
+
+This route check matters most when Workflow Supervisor was not explicitly invoked. If the task is a tiny direct edit, normal repo work is better than starting a supervisor loop.
+
+If the user explicitly invokes `workflow-supervisor`, `$workflow-supervisor`, or says to use the skill, do not silently skip it. Select the proportional profile, then keep the overhead as small as that profile allows.
 
 ## What You Get
 
@@ -90,7 +106,7 @@ flowchart TB
 
 ## What Happens When You Invoke It
 
-When you explicitly invoke `workflow-supervisor`, `$workflow-supervisor`, or say to use the skill, the first decision is the execution profile:
+When you explicitly invoke `workflow-supervisor`, `$workflow-supervisor`, or say to use the skill, the first supervisor decision is the execution profile:
 
 - `lean_work_unit_runner`: for large, already-bounded work-unit backlogs where throughput and low memory matter.
 - `strict_full_workflow`: for ambiguous, high-risk, delegated, security-sensitive, source-of-truth, publication, or cross-system work.

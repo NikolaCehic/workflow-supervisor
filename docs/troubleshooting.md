@@ -4,6 +4,12 @@
 
 Keep `policy.allow_implicit_invocation: false`. Use explicit `$skill-name` invocation until live routing tests prove trigger precision.
 
+## Workflow Supervisor is used for a tiny edit
+
+If Workflow Supervisor was not explicitly invoked and the task has obvious files, obvious acceptance, and no hard supervisor trigger, do not invoke the skill. Execute directly and run the relevant check.
+
+If the user explicitly invoked `workflow-supervisor`, `$workflow-supervisor`, or said to use the skill, do not silently skip it. Select the lightest valid profile, usually `lean_work_unit_runner` for bounded unit work or `planning_only` when the user only needs sequencing, and explain that direct execution would normally fit a tiny edit.
+
 ## The agent cannot find the skills
 
 Run:

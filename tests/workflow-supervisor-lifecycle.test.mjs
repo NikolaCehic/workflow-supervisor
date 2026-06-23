@@ -14,6 +14,7 @@ const workflowControlText = fs.readFileSync(path.join(repoRoot, "skills/workflow
 const goalResumeText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/goal-resume.md"), "utf8");
 const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
 const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
+const skillReferenceText = fs.readFileSync(path.join(repoRoot, "docs/skill-reference.md"), "utf8");
 const agentPrompt = fs.readFileSync(
   path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
   "utf8",
@@ -85,6 +86,33 @@ test("workflow-supervisor explicit invocation selects a proportional execution p
   assert.match(skillText, /Do not start a lean unit unless its boundary and done signal are clear/);
   assert.match(skillText, /one compact ledger/);
   assert.match(skillText, /Escalate a lean unit to `strict_full_workflow`/);
+});
+
+test("workflow-supervisor documents route-first behavior before profile selection", () => {
+  for (const text of [readmeText, skillText, skillReferenceText]) {
+    assert.match(text, /Route First|Route first/);
+    assert.match(text, /Small, clear edit with obvious files and acceptance/);
+    assert.match(text, /Do not use Workflow Supervisor\. Execute directly\./);
+    assert.match(text, /Large bounded backlog with clear unit done signals/);
+    assert.match(text, /`lean_work_unit_runner`\./);
+    assert.match(text, /Broad, ambiguous, source-of-truth, delegated, security-sensitive, dirty-state, release, resume, or externally published work/);
+    assert.match(text, /`strict_full_workflow`\./);
+    assert.match(text, /Sequencing, risk review, or backlog shaping only/);
+    assert.match(text, /`planning_only`\./);
+    assert.match(text, /Runnable uncertainty before implementation/);
+    assert.match(text, /Create a discovery or prototype unit first\./);
+  }
+
+  assert.match(skillText, /If Workflow Supervisor was not explicitly invoked and the task is a small, clear edit/);
+  assert.match(skillText, /When Workflow Supervisor is explicitly invoked, do not silently skip it/);
+  assert.match(readmeText, /This route check matters most when Workflow Supervisor was not explicitly invoked/);
+  assert.match(skillReferenceText, /select the proportional profile instead of silently skipping the supervisor/);
+  assert.match(troubleshootingText, /Workflow Supervisor is used for a tiny edit/);
+  assert.match(troubleshootingText, /If Workflow Supervisor was not explicitly invoked and the task has obvious files/);
+  assert.match(agentPrompt, /Route first/i);
+  assert.match(agentPrompt, /small clear edit with obvious files and acceptance/i);
+  assert.match(agentPrompt, /do not invoke it; execute directly/i);
+  assert.match(agentPrompt, /If \$workflow-supervisor was explicitly invoked, select the execution profile first/i);
 });
 
 test("workflow-supervisor strict profile retains worker-agent governance", () => {
@@ -166,7 +194,7 @@ test("workflow-supervisor keeps .workflow state out of git by default", () => {
 });
 
 test("OpenAI metadata prompt preserves complete intake behavior", () => {
-  assert.match(agentPrompt, /Use \$workflow-supervisor/);
+  assert.match(agentPrompt, /\$workflow-supervisor/);
   assert.match(agentPrompt, /select the execution profile first/i);
   assert.match(agentPrompt, /lean_work_unit_runner/i);
   assert.match(agentPrompt, /avoid subagents unless explicitly authorized/i);
