@@ -22,6 +22,10 @@ This skill owns evidence rows and supervisor verdict mapping. `$work-unit` may d
 - BLOCKED applies when evidence cannot be obtained or sources conflict.
 - Residual risks must not be hidden inside PASS.
 - If residual risks, skipped checks, future work, or next recommended actions contain an unimplemented material source requirement, the matrix status is FAIL or BLOCKED, not PASS.
+- Bug fixes and risky behavior changes require a red-capable feedback loop, or an explicit waiver explaining why no correct loop exists.
+- Treat implementer output as a claim. Verification must map source requirement -> acceptance row -> outcome evidence -> verifier verdict -> supervisor audit.
+- Tests, typecheck, lint, and build are evidence types, not automatic proof. They can satisfy a row only when the row is explicitly technical or the command observes the expected outcome.
+- Outcome rows may use `CONDITIONAL_PASS` only as a row-level verdict for behavior that is strongly inferred but not fully observable in the current environment. A final supervisor PASS still requires material rows to be fully observed as PASS or explicitly waived.
 
 ## Source Fidelity Rules
 
@@ -46,12 +50,109 @@ If a requirement cannot be verified in the current environment, mark it BLOCKED 
 
 ## Row Shape
 
-| ID | Source Ref | Requirement | Evidence Required | Verification Method | Adversarial Check | Status | Evidence |
-|---|---|---|---|---|---|---|---|
+| ID | Source Ref | Requirement | Expected Outcome | Evidence Required | Preferred Verification | Available Verification | Evidence Strength | Verification Method | Feedback Loop | Evidence Classification | Adversarial Check | Invalid PASS Conditions | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 
 Use statuses: Pending, PASS, FAIL, BLOCKED, Waived.
 
+For outcome evaluation, each material row should also be expressible as:
+
+```yaml
+outcome_evaluation:
+  id:
+  source_requirement:
+  expected_outcome:
+  preferred_verification:
+    - browser_snapshot
+    - jsdom_render
+    - integration_test
+    - api_probe
+    - static_diff_inspection
+  available_verification:
+    - integration_test
+    - api_probe
+    - static_diff_inspection
+  evidence_strength:
+    strongest_possible:
+      - browser_snapshot
+    strongest_available:
+      - jsdom_render
+      - api_probe
+      - static_diff_inspection
+    limitation:
+  invalid_pass_conditions:
+    - tests only
+    - typecheck only
+    - mocked behavior only
+    - hardcoded fixture
+    - requirement moved to future work
+    - verifier did not inspect diff
+  verdict: PASS | FAIL | BLOCKED | CONDITIONAL_PASS
+  evidence:
+    - exact command, artifact, file, trace, UI state, or inspection result
+  limitation:
+  required_external_check:
+    - manual browser review
+  finding:
+```
+
+`CONDITIONAL_PASS` is not a final workflow status. It means the behavior is strongly inferred through the strongest available substitute evidence, while a stronger material capability remains unavailable. If that unavailable capability is required to prove the source requirement, the supervisor must mark the material row or workflow BLOCKED unless the user explicitly accepts a waiver or narrower scope.
+
+## Capability Manifest
+
+Before judging outcome rows, record the verification environment when capability limits are material:
+
+```yaml
+verification_environment:
+  shell: true | false
+  filesystem: true | false
+  git_diff: true | false
+  browser: true | false
+  playwright_mcp: true | false
+  network: true | false
+  capabilities:
+    - static_diff_inspection
+    - shell_command
+    - unit_test
+    - integration_test
+    - contract_test
+    - data_contract_test
+    - jsdom_render
+    - api_probe
+    - file_snapshot
+    - browser_snapshot
+    - human_required
+  limitations:
+    - "Responsive visual layout not verified because browser capability is unavailable"
+```
+
+Do not require browser snapshots as the core verifier. Use the strongest available observable predicate. If the source requirement truly depends on unavailable browser, visual, service, credential, network, or human-review capability, mark the row BLOCKED or `CONDITIONAL_PASS` with the limitation and required external check. Do not mark the row PASS.
+
 For documentation and review workflows, also record a domain-specific review state when useful: Needs Revision, Approved With Caveats, Ready To Publish, SME Review Needed, Legal Review Needed, Stale, or Deferred. Map it back to PASS/FAIL/BLOCKED for supervisor decisions.
+
+## Red-Capable Feedback Loops
+
+For bug fixes and risky behavior changes, each material acceptance row must name a feedback loop:
+
+```yaml
+feedback_loop:
+  command_or_evidence:
+  red_capable: yes | no | not_applicable
+  exact_symptom_or_behavior:
+  deterministic: yes | no
+  expected_runtime:
+  agent_runnable: yes | no
+```
+
+`red_capable: yes` means the loop would have failed, or visibly shown the wrong behavior, before the fix. A related check is not red-capable unless it catches the exact symptom or behavior under review.
+
+Classify every row's evidence as one of:
+
+- `behavior_was_tested`: a red-capable command, test, UI state, artifact check, or reviewer action exercised the exact behavior.
+- `related_check_ran`: a nearby test, build, lint, static check, or inspection ran but does not catch the exact behavior by itself.
+- `substitute_evidence_accepted`: the correct loop is unavailable and the user or governing source accepted substitute evidence.
+
+For bug fixes and risky behavior changes, PASS requires `behavior_was_tested` or `substitute_evidence_accepted` with waiver evidence. If no correct test surface exists, record that as an architecture or verification finding. Do not turn it into a quiet skipped check.
 
 ## Adversarial Checks
 
@@ -81,6 +182,7 @@ Consider:
 status: PASS|FAIL|BLOCKED
 verified_work_unit:
 verified_worker:
+verification_environment:
 matrix:
   - id:
     requirement:
@@ -88,6 +190,14 @@ matrix:
     evidence:
     verification_method:
     finding:
+outcome_evaluations:
+  - id:
+    source_requirement:
+    expected_outcome:
+    verdict:
+    evidence_strength:
+    evidence:
+    limitation:
 findings:
 residual_risks:
 skipped_checks:
@@ -102,3 +212,5 @@ After repairs, verification must rerun against the affected rows and any regress
 ## Rubber-Stamp Guard
 
 Reject verification that says only "looks good", "tests pass", or "implemented" without row-by-row evidence. Ask for exact evidence or mark BLOCKED.
+
+Reject PASS when the evidence is only tests/typecheck/build unless the row is explicitly scoped as a purely technical requirement or the command observes the expected user/system-visible outcome.

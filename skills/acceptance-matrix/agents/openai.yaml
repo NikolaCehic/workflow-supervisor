@@ -1,7 +1,7 @@
 interface:
   display_name: "Acceptance Matrix"
   short_description: "Turn goals into verifiable criteria"
-  default_prompt: "Use $acceptance-matrix to define evidence-backed pass, fail, and blocked criteria."
+  default_prompt: "Use $acceptance-matrix to define evidence-backed pass, fail, blocked, and row-level conditional outcome criteria with expected outcomes, verification capabilities, evidence strength, invalid PASS conditions, and waiver handling."
 
 policy:
   allow_implicit_invocation: false

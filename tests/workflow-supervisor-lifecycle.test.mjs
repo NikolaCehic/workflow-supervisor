@@ -9,12 +9,16 @@ const skillText = fs.readFileSync(path.join(repoRoot, "skills/workflow-superviso
 const loopPolicyText = fs.readFileSync(path.join(repoRoot, "skills/loop-policy/SKILL.md"), "utf8");
 const workUnitText = fs.readFileSync(path.join(repoRoot, "skills/work-unit/SKILL.md"), "utf8");
 const acceptanceText = fs.readFileSync(path.join(repoRoot, "skills/acceptance-matrix/SKILL.md"), "utf8");
+const dossierBuilderText = fs.readFileSync(path.join(repoRoot, "skills/dossier-builder/SKILL.md"), "utf8");
 const workflowDocsText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/SKILL.md"), "utf8");
 const workflowControlText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/workflow-control.md"), "utf8");
 const goalResumeText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/goal-resume.md"), "utf8");
 const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
+const artifactsText = fs.readFileSync(path.join(repoRoot, "docs/artifacts.md"), "utf8");
 const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
 const skillReferenceText = fs.readFileSync(path.join(repoRoot, "docs/skill-reference.md"), "utf8");
+const dossierSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/dossier-v1.schema.json"), "utf8");
+const workerReportSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/worker-report-v1.schema.json"), "utf8");
 const agentPrompt = fs.readFileSync(
   path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
   "utf8",
@@ -267,7 +271,7 @@ test("workflow-docs defines a compact lean runner ledger", () => {
   assert.match(workflowDocsText, /compact lean-runner state/);
   assert.match(workflowControlText, /## LEDGER\.md/);
   assert.match(workflowControlText, /Profile: lean_work_unit_runner/);
-  assert.match(workflowControlText, /Source Ref \| Scope \| Done Signal \| Check \| Status/);
+  assert.match(workflowControlText, /Source Ref \| Slice Type \| Scope \| Observable Behavior \| Done Signal \| Check \| Status/);
   assert.match(readmeText, /Lean mode keeps work units but removes per-unit ceremony/);
   assert.match(readmeText, /same-session phased execution is the default/);
 });
@@ -316,6 +320,27 @@ test("work-unit guard prevents broad roadmap collapse into a single WU", () => {
   assert.match(workUnitText, /deferred_or_out_of_scope_requirements/);
 });
 
+test("work-unit prefers tracer-bullet slices for product and integration behavior", () => {
+  assert.match(workUnitText, /## Product And Integration Slices/);
+  assert.match(workUnitText, /prefer tracer-bullet work units/);
+  assert.match(workUnitText, /slice_type: tracer_bullet \| prefactor \| migration \| research \| document \| risk_boundary/);
+  assert.match(workUnitText, /observable_behavior:/);
+  assert.match(workUnitText, /expected_outcome:/);
+  assert.match(workUnitText, /demo_or_verification:/);
+  assert.match(workUnitText, /layers_touched:/);
+  assert.match(workUnitText, /horizontal_slice_justification:/);
+  assert.match(workUnitText, /Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency/);
+  assert.match(workUnitText, /Reject vague horizontal feature phases/);
+  assert.match(workUnitText, /Stop when a product or integration implementation unit lacks `observable_behavior`, `expected_outcome`, or `demo_or_verification`/);
+  assert.match(skillText, /prefer tracer-bullet units that expose one observable behavior/);
+  assert.match(skillText, /product implementation unit must name `observable_behavior`, `expected_outcome`, and `demo_or_verification`/);
+  assert.match(skillText, /Do not begin product or integration implementation from a vague horizontal phase/);
+  assert.match(skillText, /a product or integration unit is a vague horizontal phase without observable behavior/);
+  assert.match(workflowControlText, /Slice Type \| Observable Behavior \| Expected Outcome \| Demo Or Verification/);
+  assert.match(workflowControlText, /horizontal_slice_justification:/);
+  assert.match(artifactsText, /WORK-UNITS\.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `expected_outcome`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification`/);
+});
+
 test("acceptance-matrix preserves source requirement strength and rejects residual-risk hiding", () => {
   assert.match(acceptanceText, /Acceptance rows must preserve the source requirement's strength/);
   assert.match(acceptanceText, /A weaker proxy check is not equivalent evidence unless the user explicitly waives or narrows/);
@@ -324,6 +349,72 @@ test("acceptance-matrix preserves source requirement strength and rejects residu
   assert.match(acceptanceText, /source requirement weakened or omitted/);
   assert.match(acceptanceText, /roadmap exit criteria demoted to future work/);
   assert.match(acceptanceText, /material requirement hidden in residual risks/);
+});
+
+test("acceptance and dossiers require red-capable feedback loops for risky behavior", () => {
+  assert.match(acceptanceText, /Bug fixes and risky behavior changes require a red-capable feedback loop/);
+  assert.match(acceptanceText, /feedback_loop:/);
+  assert.match(acceptanceText, /red_capable: yes \| no \| not_applicable/);
+  assert.match(acceptanceText, /behavior_was_tested/);
+  assert.match(acceptanceText, /related_check_ran/);
+  assert.match(acceptanceText, /substitute_evidence_accepted/);
+  assert.match(acceptanceText, /If no correct test surface exists, record that as an architecture or verification finding/);
+  assert.match(dossierBuilderText, /validate-dossier` emits warnings when risky work omits it/);
+  assert.match(dossierBuilderText, /A related build, lint, or broad test run is not enough/);
+  assert.match(skillText, /the focused check must be red-capable or explicitly waived/);
+  assert.match(skillText, /Classify evidence as `behavior_was_tested`, `related_check_ran`, or `substitute_evidence_accepted`/);
+  assert.match(skillText, /Treat PASS without a behavior-catching loop as BLOCKED/);
+  assert.match(workflowControlText, /## Feedback Loop/);
+  assert.match(workflowControlText, /Evidence Classification/);
+  assert.match(troubleshootingText, /Bug fix passes with only related checks/);
+  assert.match(troubleshootingText, /Do not hide this as a skipped check in a PASS report/);
+  assert.match(dossierSchemaText, /"feedback_loop"/);
+  assert.match(dossierSchemaText, /"command_or_evidence"/);
+  assert.match(dossierSchemaText, /"red_capable"/);
+});
+
+test("outcome evaluation requires capability-aware row-mapped evidence", () => {
+  assert.match(acceptanceText, /source requirement -> acceptance row -> outcome evidence -> verifier verdict -> supervisor audit/);
+  assert.match(acceptanceText, /CONDITIONAL_PASS` only as a row-level verdict/);
+  assert.match(acceptanceText, /verification_environment:/);
+  assert.match(acceptanceText, /browser_snapshot/);
+  assert.match(acceptanceText, /jsdom_render/);
+  assert.match(acceptanceText, /api_probe/);
+  assert.match(acceptanceText, /Evidence Strength/);
+  assert.match(acceptanceText, /Invalid PASS Conditions/);
+  assert.match(acceptanceText, /Do not require browser snapshots as the core verifier/);
+
+  assert.match(skillText, /treat the implementer report as a claim, not truth/);
+  assert.match(skillText, /Row-level `CONDITIONAL_PASS` means strongly inferred but not fully observable/);
+  assert.match(skillText, /record the verification environment and capability manifest/);
+  assert.match(skillText, /no-op, placeholder, hardcoded fixture, test-only fake, or scope creep/);
+  assert.match(skillText, /Audit outcome rows separately/);
+  assert.match(skillText, /material outcome evidence is only "tests passed"/);
+
+  assert.match(dossierBuilderText, /expected outcomes, capability limits, and invalid PASS conditions/);
+  assert.match(dossierBuilderText, /row-mapped outcome evidence/);
+  assert.match(workflowControlText, /## Outcome Evaluation Matrix/);
+  assert.match(workflowControlText, /## Verification Environment/);
+  assert.match(readmeText, /Outcome verification treats the implementer report as a claim/);
+  assert.match(troubleshootingText, /Outcome evidence is only inferred/);
+  assert.match(skillReferenceText, /CONDITIONAL_PASS` is row-level only/);
+  assert.match(agentPrompt, /row-level CONDITIONAL_PASS is not final green status/);
+});
+
+test("WorkerReportV1 schema supports outcome rows without weakening top-level status", () => {
+  const schema = JSON.parse(workerReportSchemaText);
+  assert.deepEqual(schema.properties.status.enum, ["PASS", "FAIL", "BLOCKED"]);
+  assert.ok(schema.properties.verification_environment);
+  assert.ok(schema.properties.outcome_evaluations);
+  assert.deepEqual(schema.$defs.outcomeEvaluation.properties.verdict.enum, [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "CONDITIONAL_PASS",
+  ]);
+  assert.ok(schema.$defs.verificationCapability.enum.includes("browser_snapshot"));
+  assert.ok(schema.$defs.verificationCapability.enum.includes("jsdom_render"));
+  assert.ok(schema.$defs.verificationCapability.enum.includes("api_probe"));
 });
 
 test("README documents the coverage ledger as the green-but-incomplete guardrail", () => {

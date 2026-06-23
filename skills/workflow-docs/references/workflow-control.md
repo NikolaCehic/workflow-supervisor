@@ -80,8 +80,8 @@ Escalation Triggers:
 
 ## Units
 
-| ID | Source Ref | Scope | Done Signal | Check | Status | Touched Surfaces | Evidence | Blocker Or Next Action |
-|---|---|---|---|---|---|---|---|---|
+| ID | Source Ref | Slice Type | Scope | Observable Behavior | Done Signal | Check | Status | Touched Surfaces | Evidence | Blocker Or Next Action |
+|---|---|---|---|---|---|---|---|---|---|---|
 
 ## Batch Checkpoints
 
@@ -192,8 +192,20 @@ Notes:
 ```md
 # Work Units
 
-| ID | Worker Slug | Title | Objective | Dependencies | Status | Verification |
-|---|---|---|---|---|---|---|
+| ID | Worker Slug | Title | Slice Type | Observable Behavior | Expected Outcome | Demo Or Verification | Dependencies | Status | Verification |
+|---|---|---|---|---|---|---|---|---|---|
+
+## Unit Slice Details
+
+For each unit, record:
+
+    id:
+    slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary
+    observable_behavior:
+    expected_outcome:
+    demo_or_verification:
+    layers_touched:
+    horizontal_slice_justification:
 
 ## Sequencing
 
@@ -239,6 +251,16 @@ Notes:
 
 ## Quality Or Risk Checks
 
+## Feedback Loop
+
+    feedback_loop:
+      command_or_evidence:
+      red_capable: yes | no | not_applicable
+      exact_symptom_or_behavior:
+      deterministic: yes | no
+      expected_runtime:
+      agent_runnable: yes | no
+
 ## Required Checks Or Evidence
 
 ## Owner Or Contributor Role
@@ -276,12 +298,32 @@ Closed means the terminal report has been consumed and any native thread or suba
 ```md
 # Acceptance Matrix
 
-| ID | Requirement | Evidence Required | Verification Method | Adversarial Check | Status | Evidence |
-|---|---|---|---|---|---|---|
+## Verification Environment
+
+| Capability | Available | Notes |
+|---|---|---|
+| shell |  |  |
+| filesystem |  |  |
+| git_diff |  |  |
+| browser |  |  |
+| playwright_mcp |  |  |
+| network |  |  |
+
+## Outcome Evaluation Matrix
+
+| ID | Source Requirement | Expected Outcome | Preferred Verification | Available Verification | Evidence Strength | Invalid PASS Conditions | Verdict | Evidence | Limitation |
+|---|---|---|---|---|---|---|---|---|---|
+
+## Acceptance Rows
+
+| ID | Requirement | Evidence Required | Verification Method | Feedback Loop | Evidence Classification | Adversarial Check | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|
 
 ## Residual Risks
 
 ## Waivers
+
+## Verification Findings
 ```
 
 ## VERIFICATION-REPORT.md
@@ -303,6 +345,16 @@ Verified Worker:
 
 | Method | Result | Evidence |
 |---|---|---|
+
+## Verification Environment
+
+| Capability | Available | Notes |
+|---|---|---|
+
+## Outcome Evaluations
+
+| Row | Source Requirement | Expected Outcome | Verdict | Evidence Strength | Evidence | Limitation | Required External Check |
+|---|---|---|---|---|---|---|---|
 
 ## Acceptance Mapping
 

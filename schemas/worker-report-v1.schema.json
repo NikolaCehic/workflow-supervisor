@@ -49,33 +49,32 @@
     },
     "evidence": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "$ref": "#/$defs/evidenceEntry" }
     },
     "checks_run": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "$ref": "#/$defs/evidenceEntry" }
     },
     "skipped_checks": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "$ref": "#/$defs/evidenceEntry" }
     },
     "findings": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "$ref": "#/$defs/evidenceEntry" }
     },
     "blocking_question": {
       "type": ["string", "null"]
     },
     "next_action": {
       "type": "string"
+    },
+    "verification_environment": {
+      "$ref": "#/$defs/verificationEnvironment"
+    },
+    "outcome_evaluations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/outcomeEvaluation" }
     },
     "adapter": {
       "type": ["object", "null"],
@@ -114,6 +113,115 @@
     },
     "reason": {
       "type": ["string", "null"]
+    }
+  },
+  "$defs": {
+    "evidenceEntry": {
+      "anyOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "verificationCapability": {
+      "type": "string",
+      "enum": [
+        "static_diff_inspection",
+        "diff_inspection",
+        "shell_command",
+        "unit_test",
+        "integration_test",
+        "contract_test",
+        "data_contract_test",
+        "jsdom_render",
+        "api_probe",
+        "file_snapshot",
+        "generated_html_snapshot",
+        "component_tree_snapshot",
+        "accessibility_tree_snapshot",
+        "state_machine_test",
+        "browser_snapshot",
+        "human_required",
+        "manual_review"
+      ]
+    },
+    "capabilityList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/verificationCapability" }
+    },
+    "verificationEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shell": { "type": "boolean" },
+        "filesystem": { "type": "boolean" },
+        "git_diff": { "type": "boolean" },
+        "browser": { "type": "boolean" },
+        "playwright_mcp": { "type": "boolean" },
+        "network": { "type": "boolean" },
+        "capabilities": { "$ref": "#/$defs/capabilityList" },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "evidenceStrength": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strongest_possible", "strongest_available"],
+      "properties": {
+        "strongest_possible": { "$ref": "#/$defs/capabilityList" },
+        "strongest_available": { "$ref": "#/$defs/capabilityList" },
+        "limitation": { "type": "string" }
+      }
+    },
+    "outcomeEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source_requirement",
+        "expected_outcome",
+        "preferred_verification",
+        "available_verification",
+        "evidence_strength",
+        "evidence",
+        "invalid_pass_conditions",
+        "verdict"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source_requirement": { "type": "string", "minLength": 1 },
+        "expected_outcome": { "type": "string", "minLength": 1 },
+        "preferred_verification": { "$ref": "#/$defs/capabilityList" },
+        "available_verification": { "$ref": "#/$defs/capabilityList" },
+        "evidence_strength": { "$ref": "#/$defs/evidenceStrength" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceEntry" }
+        },
+        "invalid_pass_conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "BLOCKED", "CONDITIONAL_PASS"]
+        },
+        "limitation": { "type": "string" },
+        "capability_limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "required_external_check": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "finding": { "type": "string" }
+      }
     }
   }
 }

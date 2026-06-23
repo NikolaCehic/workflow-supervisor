@@ -2,6 +2,36 @@
 
 This changelog was reconstructed from npm publish metadata and git history after the first four package versions were published without GitHub releases or tags.
 
+## 0.2.0 - 2026-06-23
+
+Prepared outcome-evaluation verification for npm publication.
+
+### Added
+
+- Added capability-aware outcome evaluation to `WorkerReportV1` through `verification_environment` and `outcome_evaluations`.
+- Added row-level outcome verdicts so verifiers can record `CONDITIONAL_PASS` for behavior that is strongly inferred but not fully observable.
+- Added verification capability metadata for checks such as browser snapshots, jsdom renders, API probes, state-machine tests, file snapshots, and static diff inspection.
+- Added acceptance-matrix, dossier-builder, workflow-docs, and README guidance for expected outcomes, evidence strength, invalid PASS conditions, and capability limitations.
+
+### Changed
+
+- Treat implementer `PASS` as a claim that must be mapped to source requirements, acceptance rows, outcome evidence, verifier verdicts, and supervisor audit.
+- Treat tests, typecheck, lint, and build as evidence types instead of automatic material-outcome proof.
+- Require material outcome rows to be directly observed as `PASS`, blocked, or explicitly waived before final green status.
+
+### Fixed
+
+- Reject top-level `CONDITIONAL_PASS` as an invalid `WorkerReportV1.status`.
+- Reject top-level `PASS` reports when any outcome row is failed, blocked, or only conditionally observed.
+- Reject `PASS` outcome rows without row-mapped evidence and reject unknown verification capabilities.
+- Prevent unavailable browser, visual, live-service, credential, network, or human-review proof from being hidden inside final PASS reports.
+
+### Verified
+
+- Expanded delegate CLI tests for conditional outcome rows, missing row evidence, and unknown capabilities.
+- Expanded lifecycle tests to assert outcome verification rules across supervisor, acceptance matrix, dossier, workflow docs, README, troubleshooting, and schema artifacts.
+- Validated the package with `npm run validate` before release prep.
+
 ## 0.1.4 - 2026-06-19
 
 Prepared for npm publication.

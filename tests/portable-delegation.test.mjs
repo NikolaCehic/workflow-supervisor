@@ -57,6 +57,14 @@ test("WorkerReportV1 schema is packaged and native schema adapters are declared"
   assert.ok(dossierSchema.required.includes("allowed_surfaces"));
   assert.ok(dossierSchema.required.includes("forbidden_surfaces"));
   assert.deepEqual(schema.properties.status.enum, ["PASS", "FAIL", "BLOCKED"]);
+  assert.ok(schema.properties.verification_environment);
+  assert.ok(schema.properties.outcome_evaluations);
+  assert.deepEqual(schema.$defs.outcomeEvaluation.properties.verdict.enum, [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "CONDITIONAL_PASS",
+  ]);
   assert.ok(packageJson.files.includes("schemas"));
 
   assert.match(cliText, /WORKER_REPORT_SCHEMA_PATH/);

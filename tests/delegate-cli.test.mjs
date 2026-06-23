@@ -157,6 +157,112 @@ test("delegate rejects PASS reports without evidence", () => {
   assert.match(report.summary, /PASS requires non-empty evidence/);
 });
 
+test("delegate rejects CONDITIONAL_PASS as a top-level WorkerReportV1 status", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-conditional-status",
+    "--adapter-command",
+    adapterCommand("conditional-status"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-conditional-status"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /status must be PASS, FAIL, or BLOCKED/);
+});
+
+test("delegate rejects top-level PASS when an outcome row is only conditionally observed", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-conditional-row",
+    "--adapter-command",
+    adapterCommand("pass-conditional-outcome"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-conditional-row"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /top-level PASS requires every outcome_evaluations row verdict to be PASS/);
+});
+
+test("delegate accepts conditional outcome rows when the worker blocks final green status", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-blocked-conditional-row",
+    "--adapter-command",
+    adapterCommand("blocked-conditional-outcome"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-blocked-conditional-row"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, null);
+  assert.equal(report.outcome_evaluations[0].verdict, "CONDITIONAL_PASS");
+  assert.match(report.outcome_evaluations[0].limitation, /browser capability is unavailable/);
+});
+
+test("delegate rejects PASS outcome rows without row-mapped evidence", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-outcome-no-evidence",
+    "--adapter-command",
+    adapterCommand("pass-outcome-no-row-evidence"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-outcome-no-evidence"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /PASS requires row evidence/);
+});
+
+test("delegate rejects unknown outcome verification capabilities", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-unknown-capability",
+    "--adapter-command",
+    adapterCommand("pass-outcome-unknown-capability"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-unknown-capability"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /unsupported capability: telepathy_probe/);
+});
+
 test("delegate returns normalized BLOCKED when adapter executable is missing", () => {
   const report = runJson([
     "delegate",
@@ -259,6 +365,37 @@ test("validate-dossier accepts a concrete DossierV1 file", () => {
   assert.equal(report.schema, "DossierValidationV1");
   assert.equal(report.valid, true);
   assert.deepEqual(report.errors, []);
+});
+
+test("validate-dossier warns for risky behavior changes without feedback_loop", () => {
+  const cwd = tempDir();
+  const risky = dossierText("implementer", "U5").replace(
+    "objective: Exercise delegate test behavior with a concrete bounded unit.",
+    "objective: Fix login bug with a concrete behavior-catching test.",
+  );
+  const riskyFile = writeDossier(cwd, risky);
+  const riskyResult = runRaw(["validate-dossier", riskyFile, "--role", "implementer", "--unit", "U5", "--json"], cwd);
+  assert.equal(riskyResult.status, 0, riskyResult.stderr);
+  const riskyReport = JSON.parse(riskyResult.stdout);
+  assert.equal(riskyReport.valid, true);
+  assert.ok(riskyReport.warnings.some((warning) => warning.includes("feedback_loop is recommended")));
+
+  const withLoop = [
+    risky,
+    "feedback_loop:",
+    "  command_or_evidence: node --test tests/login.test.mjs",
+    "  red_capable: yes",
+    "  exact_symptom_or_behavior: login rejects valid credentials before the fix",
+    "  deterministic: yes",
+    "  expected_runtime: under 30 seconds",
+    "  agent_runnable: yes",
+  ].join("\n");
+  const withLoopFile = writeDossier(cwd, withLoop);
+  const withLoopResult = runRaw(["validate-dossier", withLoopFile, "--role", "implementer", "--unit", "U5", "--json"], cwd);
+  assert.equal(withLoopResult.status, 0, withLoopResult.stderr);
+  const withLoopReport = JSON.parse(withLoopResult.stdout);
+  assert.equal(withLoopReport.valid, true);
+  assert.ok(withLoopReport.warnings.every((warning) => !warning.includes("feedback_loop")));
 });
 
 test("validate-dossier rejects vague surfaces and unresolved questions", () => {

@@ -55,7 +55,9 @@ Lean mode requires a backlog where each executable unit has:
 ```yaml
 id:
 source_ref:
+slice_type:
 scope:
+observable_behavior:
 done:
 check:
 status: pending | active | pass | fail | blocked | escalated
@@ -63,6 +65,8 @@ notes:
 ```
 
 Do not start a lean unit unless its boundary and done signal are clear. If a unit lacks `scope`, `done`, or `check`, mark it `blocked` and ask for the smallest missing decision, or split it into smaller units. Do not hide ambiguity in notes.
+
+For product or integration behavior, prefer tracer-bullet units that expose one observable behavior across the smallest useful set of layers. A product implementation unit must name `observable_behavior`, `expected_outcome`, and `demo_or_verification`, or explicitly use a non-product `slice_type` such as `prefactor`, `migration`, `research`, `document`, or `risk_boundary` with a `horizontal_slice_justification`.
 
 Lean per-unit loop:
 
@@ -87,6 +91,8 @@ Escalate a lean unit to `strict_full_workflow` or pause for human review when:
 
 Lean verification is proportional. Use `focused-check` for the unit or batch. Use `independent-verifier` only when a risk trigger or user instruction justifies the extra cost. A lean PASS requires the ledger to show every completed unit's source reference, done signal, check or substitute evidence, and touched surfaces.
 
+For bug fixes and risky behavior changes, the focused check must be red-capable or explicitly waived. A red-capable loop catches the exact symptom or behavior, not merely a related build, lint, or broad test. If no correct test surface exists, record an architecture or verification finding instead of a quiet skipped check.
+
 ### Strict Full Workflow
 
 Strict mode always requires:
@@ -99,6 +105,7 @@ Strict mode always requires:
 6. At least one bounded work unit, even for a tiny change. Use `WU-001` when there is only one unit.
 7. A dossier for each implementation work unit before implementation begins.
 8. An acceptance matrix or acceptance draft with evidence expectations before implementation begins.
+   - For outcome-bearing work, the matrix must include expected user/system-visible outcomes, preferred and available verification capabilities, evidence strength, invalid PASS conditions, and row-level outcome verdicts.
 9. A worker-agent plan with implementer, verifier, repair-author, and documenter agents.
 10. A worker lifecycle record using `planned -> handed_off -> acknowledged -> reported -> verified -> resource_closed -> closed`.
 11. Verification labeled as `self-check`, `focused-check`, or `independent-verifier`.
@@ -140,7 +147,11 @@ Treat roadmap phases, source "Build" lists, and exit criteria as material when t
 
 Create exactly one implementation work unit only when all current-scope material requirements can be implemented and verified inside that one unit without hiding source requirements in residual risks, skipped checks, future work, or next recommended actions. For multi-phase, dependency-heavy, or roadmap-driven work, create one work unit per independently verifiable phase, integration, data slice, or risk boundary.
 
+For user-facing behavior or integration behavior, make work units tracer-bullet shaped by default. Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency that cannot yet be verified as behavior, and they must include a horizontal-slice justification.
+
 Before final closeout, audit the coverage ledger. The workflow may be PASS only when every material requirement is mapped to a PASS acceptance row, explicitly waived by the user, or blocked and reported as not complete.
+
+For outcome evaluation, treat the implementer report as a claim, not truth. The required chain is source requirement -> acceptance row -> outcome evidence -> verifier verdict -> supervisor audit. Tests, typecheck, lint, and build are only evidence types; they are not enough for material behavior unless the row is explicitly technical or the command observes the expected outcome.
 
 ## SPEC Review And Q&A Gate
 
@@ -224,6 +235,10 @@ When the human answers:
 - Always produce a plan after complete intake. In `human_in_loop`, make it an approval packet and stop for approval. In `autonomous_goal`, make it an execution plan and continue only when the completed intake authorizes that path.
 - Do not begin strict implementation until complete intake and the path gate are satisfied, at least one work unit exists, at least one concrete dossier exists, worker-agent contracts exist, and no stop gate applies.
 - Do not begin lean implementation until the scope contract is recorded, the backlog contains at least one ready unit, the compact ledger exists or can be kept inline, the current unit has source reference, scope, done signal, and check, and no escalation gate applies.
+- Do not begin product or integration implementation from a vague horizontal phase. Prefer a tracer-bullet unit with observable behavior and demo or verification; allow horizontal units only for prefactoring, migration, infrastructure, documentation, research, or risk-boundary work with a justification.
+- Do not mark a bug fix or risky behavior change PASS unless acceptance rows name a red-capable feedback loop, or the user explicitly accepts substitute evidence.
+- Do not mark outcome-bearing work PASS unless every material outcome row has fully observed evidence, or the user explicitly waives/narrows the missing proof. Row-level `CONDITIONAL_PASS` means strongly inferred but not fully observable; it is not a green final workflow status.
+- When a verification capability is unavailable, record the capability limitation and required external check instead of pretending the outcome was observed. Browser snapshots, visual diffs, live services, credentials, and human reviews are verifier adapters, not universal requirements.
 - Delegate workers only through an automated supported delegation transport after complete intake and the path gate authorize delegation. If no supported transport exists, use same-session phased mode only when intake allowed it; otherwise stop as `worker_agent_unavailable`.
 - Do not start implementer, verifier, repair-author, or documenter workers before complete intake and the path gate are satisfied; role-specific start conditions are additional gates after that.
 - Do not use native thread or native subagent workers unless the environment exposes a close operation for that transport. For Codex subagents, the supervisor must call `close_agent` for every `spawn_agent` id after the worker reaches a terminal report, times out, blocks, fails validation, is cancelled, or is no longer needed.
@@ -283,6 +298,8 @@ skipped_checks:
 blockers:
 residual_risks:
 next_recommended_action:
+verification_environment:
+outcome_evaluations:
 ```
 
 Implementers may edit only allowed surfaces from the dossier. Verifiers must not edit. Repair authors write repair tickets from failed acceptance rows and must not expand scope. Documenters update only approved workflow or documentation surfaces after source, implementation, verification, or repair evidence exists.
@@ -334,7 +351,7 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 4. If the profile is `lean_work_unit_runner`, run the lean loop:
    - Confirm the source contains bounded work units or create a short upfront backlog contract. If not possible, pause for a decision or switch to `planning_only` or `strict_full_workflow`.
    - Create or select one compact ledger instead of full workflow docs.
-   - Verify each ready unit has `id`, `source_ref`, `scope`, `done`, `check`, and `status`.
+   - Verify each ready unit has `id`, `source_ref`, `slice_type`, `scope`, `done`, `check`, and `status`; product or integration units also need `observable_behavior`, `expected_outcome`, and `demo_or_verification`.
    - Present a concise batch plan in `human_in_loop`, or continue in `autonomous_goal` when intake permits it.
    - Execute one unit at a time with targeted inspection, smallest patch, focused check, ledger update, and checkpoint cadence.
    - Escalate only the affected unit or batch when a strict-mode trigger appears; do not convert the whole backlog to strict mode unless the source contract is invalid.
@@ -345,7 +362,7 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 8. Create the source-requirement coverage ledger. If any material source requirement cannot be classified, mapped to work, or explicitly deferred, stop and ask for the missing scope decision.
 9. Create the SPEC review packet or `.workflow/SPEC.md` from the source corpus and coverage ledger.
 10. Run the SPEC Q&A gate. In `human_in_loop`, stop until the human asks questions, receives answers or revisions, and explicitly approves the SPEC. In `autonomous_goal`, continue only when no blocking questions remain and approval is not required by intake.
-11. Split the objective into bounded work units from the approved or non-blocked SPEC and coverage ledger. Use `$work-unit` for ambiguous or multi-phase goals. If the task is tiny and the ledger has no deferred material requirements, create exactly one work unit named `WU-001`.
+11. Split the objective into bounded work units from the approved or non-blocked SPEC and coverage ledger. Use `$work-unit` for ambiguous, multi-phase, product, or integration goals. Prefer tracer-bullet units for user-facing or integration behavior. If the task is tiny and the ledger has no deferred material requirements, create exactly one work unit named `WU-001`.
 12. Choose a loop policy before starting work: sequential or parallel, retry limits, approval gates, budgets, goal update cadence, and blocker rules. Use `$loop-policy` when the policy is not obvious.
 13. Build dossiers for the first implementation units and any planned verification, repair, or documentation workers. Use `$dossier-builder` when delegating work to another agent or when the task has boundaries.
 14. Assign worker roles with explicit allowed and forbidden behavior. Use `$worker-roles` for multi-agent, native-thread, or portable-worker work.
@@ -359,12 +376,20 @@ Negative example: "Using Workflow Supervisor, generate an API and create the pro
 18. After the path gate is satisfied, delegate named workers from the worker delegation plan through the selected automated transport. Send each worker only its role, dossier, sources, acceptance rows, stop gates, and report schema. For native threads or subagents, record the native resource id immediately and confirm a close operation exists before starting more workers.
 19. Collect one terminal report from each worker. If a worker asks a human-facing question, convert it to `BLOCKED` and have the supervisor ask the user only when the path policy permits. For native threads or subagents, close the native resource after the report or blocker is captured.
 20. Verify independently where possible. Use `$acceptance-matrix` to map every requirement to evidence. Start verifier workers only after the relevant implementer report is available.
+   - For outcome-bearing rows, record the verification environment and capability manifest before judging evidence.
+   - Compare what the work unit required, what the implementer changed, touched surfaces, forbidden surfaces, and whether the result is a no-op, placeholder, hardcoded fixture, test-only fake, or scope creep.
+   - Evaluate behavior, not just build health: run the feature or use case end to end when possible, call the API/CLI/UI route directly, inspect generated files/output/state, verify data/schema/contracts, check before/after behavior, and test negative or adversarial cases.
+   - If browser or visual proof is unavailable, use the strongest available lower-level observable contract such as jsdom render, server-rendered output, state-machine/view-model test, API probe, file snapshot, route manifest, or static semantic diff inspection. Mark any missing stronger proof as `CONDITIONAL_PASS` or BLOCKED at the row level.
+   - For bug fixes and risky behavior changes, require a feedback loop with `command_or_evidence`, `red_capable`, `exact_symptom_or_behavior`, `deterministic`, `expected_runtime`, and `agent_runnable`.
+   - Classify evidence as `behavior_was_tested`, `related_check_ran`, or `substitute_evidence_accepted`.
+   - Treat PASS without a behavior-catching loop as BLOCKED unless waiver evidence accepts substitute evidence.
 21. If verification FAILs, convert findings into repair tickets and route them to a repair-author or implementer repair worker. Do not expand scope during repair.
 22. Re-run verification after repairs. Continue only until PASS, BLOCKED, repair limit, or path stop.
 23. Start documenter workers only after source, implementation, verification, or repair evidence exists, unless the documenter is explicitly creating planning state.
 24. If verification BLOCKs, record the resume checkpoint, report the blocker, and stop or ask for the missing decision. When the human answers, use Resume After Human Decision.
 25. Use `$workflow-docs` to create or refresh reusable Markdown artifacts under `<workspace>/.workflow/` when the workflow must persist across context loss, agents, or sessions.
 26. Audit skipped checks, residual risks, future work, and next recommended actions against the source-requirement coverage ledger. If any material source requirement appears there without an explicit user deferral or waiver, mark the workflow FAIL/BLOCKED and create more work units or ask for a scope decision.
+   - Audit outcome rows separately. A row-level `CONDITIONAL_PASS` cannot be hidden inside a final PASS unless the final report names the limitation and an explicit user waiver accepts that limitation.
 27. When all material acceptance rows are PASS or waived, apply the final disposition policy:
    - `human_in_loop`: use the completed intake final disposition; if it is `ask_at_end`, ask the human to choose PR, push main, or keep local.
    - `autonomous_goal`: use the completed intake final disposition. If it is `ask_at_end`, stop and ask before taking any final disposition action.
@@ -496,6 +521,7 @@ Stop when:
 - sources contradict each other on a material requirement
 - the requested scope cannot fit into a bounded work unit
 - `lean_work_unit_runner` is selected but the backlog lacks clear unit ids, source references, boundaries, done signals, or targeted checks
+- a product or integration unit is a vague horizontal phase without observable behavior, demo or verification, valid non-product slice type, or horizontal-slice justification
 - `lean_work_unit_runner` finds a strict-mode risk trigger and the user has not authorized escalation, deferral, or a narrower unit
 - the coverage ledger is missing, incomplete, or contains material requirements classified as future work without explicit user deferral
 - human-in-loop SPEC approval is missing, marked Needs Revision, marked Blocked, or has unanswered Q&A
@@ -503,6 +529,10 @@ Stop when:
 - mandatory approval packet, work unit, dossier, worker-agent contract, or acceptance matrix is missing
 - allowed and forbidden surfaces cannot be named
 - acceptance cannot be verified with evidence
+- material outcome evidence is only "tests passed", typecheck, build, or implementation prose without expected-outcome observation
+- a material outcome row is `CONDITIONAL_PASS` but the final workflow is being marked PASS without explicit waiver evidence
+- a required browser, visual, live-service, credential, network, or human-review capability is unavailable and no waiver or blocked status is recorded
+- a bug fix or risky behavior change has only related checks and no red-capable feedback loop or explicit substitute-evidence waiver
 - a verifier is asked to edit or an implementer is asked to self-approve
 - repair loops repeat without new evidence
 - the user requires approval before continuing
@@ -533,6 +563,8 @@ Report:
 - Workers delegated, blocked, unavailable, or skipped
 - Worker lifecycle status for each role, including native resource ids and close results when native threads or subagents were used
 - Verification evidence
+- Verification environment and capability limitations when they affected proof strength
+- Outcome evaluation rows, including any `CONDITIONAL_PASS` rows and required external checks
 - Repairs performed or recommended
 - Checks run and skipped
 - Residual risks
