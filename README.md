@@ -245,8 +245,8 @@ Common workflow files:
 | `.workflow/WORK-UNITS.md` | `work-unit`, `workflow-docs` | Unit list, dependencies, sequencing, blocked units. |
 | `.workflow/DOSSIER.md` or `.workflow/dossiers/*.yaml` | `dossier-builder`, `workflow-docs` | Worker contracts for implementation, verification, repair, or documentation. |
 | `.workflow/WORKER-MAP.md` | `workflow-supervisor`, `worker-roles`, `workflow-docs` | Worker names, roles, transports, native resource ids, lifecycle, reports, close results, blockers. |
-| `.workflow/ACCEPTANCE-MATRIX.md` | `acceptance-matrix`, `workflow-docs` | Evidence rows and material PASS, FAIL, BLOCKED states. |
-| `.workflow/VERIFICATION-REPORT.md` | verifier worker, `acceptance-matrix`, `workflow-docs` | Verification evidence, findings, skipped checks, residual risks. |
+| `.workflow/ACCEPTANCE-MATRIX.md` | `acceptance-matrix`, `workflow-docs` | Evidence rows, outcome evaluation rows, capability limits, and material PASS, FAIL, BLOCKED states. |
+| `.workflow/VERIFICATION-REPORT.md` | verifier worker, `acceptance-matrix`, `workflow-docs` | Verification environment, outcome evidence, findings, skipped checks, residual risks. |
 | `.workflow/REPAIR-TICKETS.md` | repair worker, `workflow-docs` | Repair tasks tied to failed rows or verifier findings. |
 | `.workflow/DECISIONS.md` | supervisor, `workflow-docs` | User decisions, assumptions, reversals, unresolved questions. |
 | `.workflow/HANDOFF.md` | supervisor, `workflow-docs` | Resume pack for another agent or later session. |
@@ -350,6 +350,33 @@ Every delegated worker returns this machine-shaped report:
   "findings": [],
   "blocking_question": null,
   "next_action": "supervisor_review",
+  "verification_environment": {
+    "shell": true,
+    "filesystem": true,
+    "git_diff": true,
+    "browser": false,
+    "playwright_mcp": false,
+    "network": false,
+    "capabilities": ["shell_command", "api_probe", "static_diff_inspection"],
+    "limitations": ["Browser layout was not verified because browser capability was unavailable"]
+  },
+  "outcome_evaluations": [
+    {
+      "id": "A-001",
+      "source_requirement": "User can create a workflow and read it back.",
+      "expected_outcome": "The API persists the workflow and returns it with the expected schema.",
+      "preferred_verification": ["integration_test", "api_probe", "static_diff_inspection"],
+      "available_verification": ["integration_test", "api_probe", "static_diff_inspection"],
+      "evidence_strength": {
+        "strongest_possible": ["integration_test"],
+        "strongest_available": ["integration_test"]
+      },
+      "evidence": ["pytest tests/test_api.py passed"],
+      "invalid_pass_conditions": ["tests only without API behavior assertion", "hardcoded fixture"],
+      "verdict": "PASS",
+      "finding": ""
+    }
+  ],
   "adapter": null,
   "guard": null,
   "reason": null
@@ -357,6 +384,25 @@ Every delegated worker returns this machine-shaped report:
 ```
 
 The supervisor trusts the report shape, not loose prose. A PASS without evidence is invalid. A verifier that edits implementation is invalid. A worker that asks the human directly is converted into a blocker for the supervisor to route.
+
+Outcome verification treats the implementer report as a claim. A material behavior row needs expected outcome, evidence strength, preferred and available verification capabilities, invalid PASS conditions, and row-mapped evidence. `CONDITIONAL_PASS` is allowed only as a row-level outcome verdict for behavior that is strongly inferred but not fully observable; it is not a top-level `WorkerReportV1.status` and must not be treated as final green status without explicit waiver evidence.
+
+### Outcome Evaluation
+
+The implementer report is not the proof of the outcome. It is a structured claim that gives the supervisor something concrete to verify.
+
+For outcome-bearing work, the verifier maps each material source requirement to:
+
+- the expected user or system-visible outcome
+- the strongest preferred verification capability
+- the strongest verification capability actually available
+- row-mapped evidence
+- invalid PASS conditions
+- a row verdict
+
+Valid row verdicts are `PASS`, `FAIL`, `BLOCKED`, and `CONDITIONAL_PASS`. A row can be `CONDITIONAL_PASS` only when the available evidence strongly supports the outcome but a stronger material capability is unavailable. The missing capability and required external check must be recorded.
+
+The final worker status remains narrower: `PASS`, `FAIL`, or `BLOCKED`. A final `PASS` requires every material outcome row to be `PASS` unless the user explicitly waives or narrows the missing proof.
 
 For native threads or subagents, the report is only the work result. The supervisor must also close the native resource. For Codex subagents, record the returned `agent_id` and call `close_agent` after the report, timeout, failure, blocker, cancellation, or invalid-output result is captured. Final outcome is blocked while any native worker lacks a close result.
 
@@ -594,6 +640,8 @@ If you are an agent using this package:
 7. Treat same-session verification as `focused-check` or `self-check`, not `independent-verifier`.
 8. Trust only structured `WorkerReportV1` results from delegated workers.
 9. Treat verifier edits as invalid.
-10. Keep `.workflow/` ignored and local unless the user explicitly asks to publish it.
+10. Treat tests/typecheck/build as evidence types, not automatic outcome proof.
+11. Record capability limits instead of pretending browser, visual, live-service, credential, network, or human-review proof exists.
+12. Keep `.workflow/` ignored and local unless the user explicitly asks to publish it.
 
 The promise is not magic autonomy. The promise is disciplined supervision: clear setup, bounded work, scoped workers, structured reports, evidence, repair, and a clean final handoff.

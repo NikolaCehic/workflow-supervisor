@@ -18,6 +18,7 @@ const artifactsText = fs.readFileSync(path.join(repoRoot, "docs/artifacts.md"), 
 const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
 const skillReferenceText = fs.readFileSync(path.join(repoRoot, "docs/skill-reference.md"), "utf8");
 const dossierSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/dossier-v1.schema.json"), "utf8");
+const workerReportSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/worker-report-v1.schema.json"), "utf8");
 const agentPrompt = fs.readFileSync(
   path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
   "utf8",
@@ -324,19 +325,20 @@ test("work-unit prefers tracer-bullet slices for product and integration behavio
   assert.match(workUnitText, /prefer tracer-bullet work units/);
   assert.match(workUnitText, /slice_type: tracer_bullet \| prefactor \| migration \| research \| document \| risk_boundary/);
   assert.match(workUnitText, /observable_behavior:/);
+  assert.match(workUnitText, /expected_outcome:/);
   assert.match(workUnitText, /demo_or_verification:/);
   assert.match(workUnitText, /layers_touched:/);
   assert.match(workUnitText, /horizontal_slice_justification:/);
   assert.match(workUnitText, /Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency/);
   assert.match(workUnitText, /Reject vague horizontal feature phases/);
-  assert.match(workUnitText, /Stop when a product or integration implementation unit lacks `observable_behavior` or `demo_or_verification`/);
+  assert.match(workUnitText, /Stop when a product or integration implementation unit lacks `observable_behavior`, `expected_outcome`, or `demo_or_verification`/);
   assert.match(skillText, /prefer tracer-bullet units that expose one observable behavior/);
-  assert.match(skillText, /product implementation unit must name `observable_behavior` and `demo_or_verification`/);
+  assert.match(skillText, /product implementation unit must name `observable_behavior`, `expected_outcome`, and `demo_or_verification`/);
   assert.match(skillText, /Do not begin product or integration implementation from a vague horizontal phase/);
   assert.match(skillText, /a product or integration unit is a vague horizontal phase without observable behavior/);
-  assert.match(workflowControlText, /Slice Type \| Observable Behavior \| Demo Or Verification/);
+  assert.match(workflowControlText, /Slice Type \| Observable Behavior \| Expected Outcome \| Demo Or Verification/);
   assert.match(workflowControlText, /horizontal_slice_justification:/);
-  assert.match(artifactsText, /WORK-UNITS\.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification`/);
+  assert.match(artifactsText, /WORK-UNITS\.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `expected_outcome`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification`/);
 });
 
 test("acceptance-matrix preserves source requirement strength and rejects residual-risk hiding", () => {
@@ -369,6 +371,50 @@ test("acceptance and dossiers require red-capable feedback loops for risky behav
   assert.match(dossierSchemaText, /"feedback_loop"/);
   assert.match(dossierSchemaText, /"command_or_evidence"/);
   assert.match(dossierSchemaText, /"red_capable"/);
+});
+
+test("outcome evaluation requires capability-aware row-mapped evidence", () => {
+  assert.match(acceptanceText, /source requirement -> acceptance row -> outcome evidence -> verifier verdict -> supervisor audit/);
+  assert.match(acceptanceText, /CONDITIONAL_PASS` only as a row-level verdict/);
+  assert.match(acceptanceText, /verification_environment:/);
+  assert.match(acceptanceText, /browser_snapshot/);
+  assert.match(acceptanceText, /jsdom_render/);
+  assert.match(acceptanceText, /api_probe/);
+  assert.match(acceptanceText, /Evidence Strength/);
+  assert.match(acceptanceText, /Invalid PASS Conditions/);
+  assert.match(acceptanceText, /Do not require browser snapshots as the core verifier/);
+
+  assert.match(skillText, /treat the implementer report as a claim, not truth/);
+  assert.match(skillText, /Row-level `CONDITIONAL_PASS` means strongly inferred but not fully observable/);
+  assert.match(skillText, /record the verification environment and capability manifest/);
+  assert.match(skillText, /no-op, placeholder, hardcoded fixture, test-only fake, or scope creep/);
+  assert.match(skillText, /Audit outcome rows separately/);
+  assert.match(skillText, /material outcome evidence is only "tests passed"/);
+
+  assert.match(dossierBuilderText, /expected outcomes, capability limits, and invalid PASS conditions/);
+  assert.match(dossierBuilderText, /row-mapped outcome evidence/);
+  assert.match(workflowControlText, /## Outcome Evaluation Matrix/);
+  assert.match(workflowControlText, /## Verification Environment/);
+  assert.match(readmeText, /Outcome verification treats the implementer report as a claim/);
+  assert.match(troubleshootingText, /Outcome evidence is only inferred/);
+  assert.match(skillReferenceText, /CONDITIONAL_PASS` is row-level only/);
+  assert.match(agentPrompt, /row-level CONDITIONAL_PASS is not final green status/);
+});
+
+test("WorkerReportV1 schema supports outcome rows without weakening top-level status", () => {
+  const schema = JSON.parse(workerReportSchemaText);
+  assert.deepEqual(schema.properties.status.enum, ["PASS", "FAIL", "BLOCKED"]);
+  assert.ok(schema.properties.verification_environment);
+  assert.ok(schema.properties.outcome_evaluations);
+  assert.deepEqual(schema.$defs.outcomeEvaluation.properties.verdict.enum, [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "CONDITIONAL_PASS",
+  ]);
+  assert.ok(schema.$defs.verificationCapability.enum.includes("browser_snapshot"));
+  assert.ok(schema.$defs.verificationCapability.enum.includes("jsdom_render"));
+  assert.ok(schema.$defs.verificationCapability.enum.includes("api_probe"));
 });
 
 test("README documents the coverage ledger as the green-but-incomplete guardrail", () => {

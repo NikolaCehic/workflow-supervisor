@@ -47,6 +47,14 @@ Unsupported external gauntlet summaries are not validation evidence. Treat them 
 
 Use `$acceptance-matrix` for formal evidence rows. A PASS requires row-by-row evidence or explicit waiver evidence.
 
+## Outcome evidence is only inferred
+
+Use row-level `CONDITIONAL_PASS` only when the strongest available checks strongly infer the expected outcome but cannot fully observe it. Record the missing capability, limitation, and required external check. Do not roll that row into a final PASS unless the user explicitly accepts the limitation as a waiver or narrowed scope.
+
+## Browser snapshots are unavailable
+
+Browser snapshots are a verifier adapter, not the core verification model. If browser, screenshot, Playwright, Storybook, visual diff, or manual-review capability is unavailable, use the strongest available lower-level observable contract such as jsdom render, API probe, state-machine test, file snapshot, route manifest, or static semantic diff inspection. If the source requirement truly depends on browser or visual proof, mark the row BLOCKED or `CONDITIONAL_PASS` with the limitation.
+
 ## Bug fix passes with only related checks
 
 A related build, lint, broad test run, or inspection is not enough for a bug fix or risky behavior change unless it would catch the exact symptom. Add a red-capable feedback loop with the command, artifact, UI state, or manual check that would fail before the fix and pass after it.

@@ -22,6 +22,7 @@ The dossier does not own acceptance design. It references or embeds acceptance r
 - known allowed and forbidden surfaces or artifacts
 - acceptance criteria or acceptance draft
 - required checks or evidence
+- expected outcomes, capability limits, and invalid PASS conditions for outcome-bearing work
 - worker role and report expectations
 
 If these inputs are missing, create a discovery dossier or return BLOCKED.
@@ -68,6 +69,21 @@ reviewers:
 acceptance_matrix:
 adversarial_checks:
 required_commands_or_evidence:
+verification_environment:
+  shell: true | false
+  filesystem: true | false
+  git_diff: true | false
+  browser: true | false
+  playwright_mcp: true | false
+  network: true | false
+outcome_evaluations:
+  - id:
+    source_requirement:
+    expected_outcome:
+    preferred_verification:
+    available_verification:
+    evidence_strength:
+    invalid_pass_conditions:
 feedback_loop:
   command_or_evidence:
   red_capable: yes | no | not_applicable
@@ -94,6 +110,8 @@ The machine gate requires concrete strings or arrays for the core fields. Use `o
 - Include forbidden surfaces even when the worker seems trustworthy.
 - Convert unknowns into open questions, not hidden assumptions.
 - Include adversarial checks for malformed input, stale state, authorization, schema drift, replay, no-op implementation, and untrusted sources when relevant.
+- For outcome-bearing work, require workers to report row-mapped outcome evidence. The worker must not treat tests/typecheck/build as sufficient unless the row is explicitly technical or those commands observe the expected outcome.
+- Include capability limitations and required external checks when an expected outcome depends on browser, visual, live-service, credential, network, or human-review capability that may be unavailable.
 - For bug fixes and risky behavior changes, require a feedback loop that would catch the exact symptom or behavior. A related build, lint, or broad test run is not enough unless waiver evidence accepts it as substitute evidence.
 - Require workers to report skipped checks and assumptions.
 - For non-code work, use evidence such as citations, before/after excerpts, review rubrics, examples, artifact diffs, or explicit user decisions instead of commands.

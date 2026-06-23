@@ -80,6 +80,17 @@ Every adapter must normalize into this shape:
   "findings": [],
   "blocking_question": null,
   "next_action": "",
+  "verification_environment": {
+    "shell": true,
+    "filesystem": true,
+    "git_diff": true,
+    "browser": false,
+    "playwright_mcp": false,
+    "network": false,
+    "capabilities": ["shell_command", "api_probe", "static_diff_inspection"],
+    "limitations": []
+  },
+  "outcome_evaluations": [],
   "adapter": {
     "agent": "codex",
     "command": "codex exec",
@@ -93,7 +104,7 @@ Every adapter must normalize into this shape:
 }
 ```
 
-`PASS`, `FAIL`, and `BLOCKED` mean the same thing on both platforms. A worker report without evidence for material acceptance rows is invalid. Invalid output is converted into a deterministic normalized `BLOCKED` report by default. The package does not make a second live worker call to repair formatting, because a second call can mutate state, consume budget, or produce another non-portable transcript.
+`PASS`, `FAIL`, and `BLOCKED` mean the same thing on both platforms. `CONDITIONAL_PASS` is valid only as a row-level `outcome_evaluations[].verdict`, not as top-level `WorkerReportV1.status`. A worker report without evidence for material acceptance rows is invalid. A top-level PASS with failed, blocked, or conditional outcome rows is invalid. Invalid output is converted into a deterministic normalized `BLOCKED` report by default. The package does not make a second live worker call to repair formatting, because a second call can mutate state, consume budget, or produce another non-portable transcript.
 
 The schema is a package artifact at `schemas/worker-report-v1.schema.json`. Codex receives it through `--output-schema`; Claude Code receives it through `--json-schema`; both adapters are still wrapper-validated after the run.
 
@@ -163,6 +174,8 @@ For git workspaces, the surface guard compares pre/post git status. Mutable role
 | Worker hangs | Timeout returns normalized `BLOCKED` with adapter timing evidence. |
 | Worker exits non-zero but printed useful text | Do not trust it as PASS. Normalize as `BLOCKED` unless a valid report and clean guards prove otherwise. |
 | Worker returns PASS without evidence | Invalid report. Return normalized `BLOCKED` with `reason: report_validation_failed`. |
+| Worker returns top-level `CONDITIONAL_PASS` | Invalid report. Use `BLOCKED` or `FAIL` top-level status and record `CONDITIONAL_PASS` only on the affected outcome row. |
+| Worker hides conditional outcome proof inside PASS | Invalid report. Top-level PASS requires every material outcome row verdict to be PASS. |
 | Tests cannot run | Verifier returns `BLOCKED` or `PASS` only with substitute evidence accepted by the acceptance matrix. |
 | Repair expands scope | Reject unless the repair dossier explicitly allowed the new surfaces and criteria. |
 | Units touch same surfaces | Run sequentially. Parallel delegation requires proven disjoint mutable surfaces. |

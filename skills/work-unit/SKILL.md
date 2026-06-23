@@ -30,12 +30,13 @@ Every product or integration implementation unit must name:
 ```yaml
 slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary
 observable_behavior:
+expected_outcome:
 demo_or_verification:
 layers_touched:
 horizontal_slice_justification:
 ```
 
-For `tracer_bullet`, `observable_behavior` and `demo_or_verification` are required and `layers_touched` should name the smallest layers needed for that behavior. For horizontal or non-product slice types, set `observable_behavior` to `not_applicable` only when the unit names a concrete `horizontal_slice_justification`.
+For `tracer_bullet`, `observable_behavior`, `expected_outcome`, and `demo_or_verification` are required and `layers_touched` should name the smallest layers needed for that behavior. For horizontal or non-product slice types, set `observable_behavior` and `expected_outcome` to `not_applicable` only when the unit names a concrete `horizontal_slice_justification`.
 
 Reject vague horizontal feature phases such as "backend foundation", "frontend pass", "data model work", or "integration prep" unless the unit has a valid non-product `slice_type`, a concrete dependency it unlocks, and a verification method for that slice.
 
@@ -46,7 +47,7 @@ A good work unit has:
 - one objective
 - a stable unit ID suitable for dossier and worker naming
 - a `slice_type` that matches the work shape
-- observable behavior and demo or verification for product or integration behavior
+- observable behavior, expected outcome, and demo or verification for product or integration behavior
 - named dependencies
 - explicit in-scope and out-of-scope surfaces
 - known sources or source gaps
@@ -102,6 +103,7 @@ units:
     objective:
     slice_type:
     observable_behavior:
+    expected_outcome:
     demo_or_verification:
     layers_touched:
     horizontal_slice_justification:
@@ -126,4 +128,4 @@ first_recommended_unit:
 
 Stop when a unit cannot name a done criterion, required source, or boundary. Ask for a decision or return a smaller discovery unit.
 
-Stop when a product or integration implementation unit lacks `observable_behavior` or `demo_or_verification`. Return a tracer-bullet split instead of a horizontal phase unless the unit has a valid non-product `slice_type` and `horizontal_slice_justification`.
+Stop when a product or integration implementation unit lacks `observable_behavior`, `expected_outcome`, or `demo_or_verification`. Return a tracer-bullet split instead of a horizontal phase unless the unit has a valid non-product `slice_type` and `horizontal_slice_justification`.

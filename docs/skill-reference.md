@@ -32,7 +32,7 @@ Define role contracts and solo-mode phase separation. It prevents role bleed: ve
 
 ## `acceptance-matrix`
 
-Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguous, resumable, or delegated workflows. Rows must preserve source requirement strength, including named systems, quantities, live integration language, and exit criteria; weaker proxy checks require explicit user waiver or scope narrowing.
+Create formal evidence-mapped acceptance rows for high-risk, supervised, ambiguous, resumable, or delegated workflows. Rows must preserve source requirement strength, including named systems, quantities, live integration language, and exit criteria; weaker proxy checks require explicit user waiver or scope narrowing. Outcome-bearing rows also name expected outcomes, preferred and available verification capabilities, evidence strength, invalid PASS conditions, and capability limitations. `CONDITIONAL_PASS` is row-level only and must not be treated as final green status without explicit waiver evidence.
 
 ## `loop-policy`
 

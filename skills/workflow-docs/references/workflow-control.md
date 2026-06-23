@@ -192,8 +192,8 @@ Notes:
 ```md
 # Work Units
 
-| ID | Worker Slug | Title | Slice Type | Observable Behavior | Demo Or Verification | Dependencies | Status | Verification |
-|---|---|---|---|---|---|---|---|---|
+| ID | Worker Slug | Title | Slice Type | Observable Behavior | Expected Outcome | Demo Or Verification | Dependencies | Status | Verification |
+|---|---|---|---|---|---|---|---|---|---|
 
 ## Unit Slice Details
 
@@ -202,6 +202,7 @@ For each unit, record:
     id:
     slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary
     observable_behavior:
+    expected_outcome:
     demo_or_verification:
     layers_touched:
     horizontal_slice_justification:
@@ -297,6 +298,24 @@ Closed means the terminal report has been consumed and any native thread or suba
 ```md
 # Acceptance Matrix
 
+## Verification Environment
+
+| Capability | Available | Notes |
+|---|---|---|
+| shell |  |  |
+| filesystem |  |  |
+| git_diff |  |  |
+| browser |  |  |
+| playwright_mcp |  |  |
+| network |  |  |
+
+## Outcome Evaluation Matrix
+
+| ID | Source Requirement | Expected Outcome | Preferred Verification | Available Verification | Evidence Strength | Invalid PASS Conditions | Verdict | Evidence | Limitation |
+|---|---|---|---|---|---|---|---|---|---|
+
+## Acceptance Rows
+
 | ID | Requirement | Evidence Required | Verification Method | Feedback Loop | Evidence Classification | Adversarial Check | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
 
@@ -326,6 +345,16 @@ Verified Worker:
 
 | Method | Result | Evidence |
 |---|---|---|
+
+## Verification Environment
+
+| Capability | Available | Notes |
+|---|---|---|
+
+## Outcome Evaluations
+
+| Row | Source Requirement | Expected Outcome | Verdict | Evidence Strength | Evidence | Limitation | Required External Check |
+|---|---|---|---|---|---|---|---|
 
 ## Acceptance Mapping
 

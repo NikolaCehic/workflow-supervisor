@@ -19,6 +19,26 @@ const AGENTS = new Set([...INSTALLABLE_AGENTS, "generic"]);
 const DELEGATE_AGENTS = new Set(["codex", "claude-code"]);
 const WORKER_ROLES = new Set(["implementer", "verifier", "repair", "documenter"]);
 const REPORT_STATUSES = new Set(["PASS", "FAIL", "BLOCKED"]);
+const OUTCOME_VERDICTS = new Set(["PASS", "FAIL", "BLOCKED", "CONDITIONAL_PASS"]);
+const VERIFICATION_CAPABILITIES = new Set([
+  "static_diff_inspection",
+  "diff_inspection",
+  "shell_command",
+  "unit_test",
+  "integration_test",
+  "contract_test",
+  "data_contract_test",
+  "jsdom_render",
+  "api_probe",
+  "file_snapshot",
+  "generated_html_snapshot",
+  "component_tree_snapshot",
+  "accessibility_tree_snapshot",
+  "state_machine_test",
+  "browser_snapshot",
+  "human_required",
+  "manual_review",
+]);
 const WORKFLOW_STATE_IGNORE_ENTRY = ".workflow/";
 
 function usage() {
@@ -945,6 +965,8 @@ function buildWorkerPrompt({ role, unitId, dossierText }) {
         findings: [],
         blocking_question: null,
         next_action: "",
+        verification_environment: null,
+        outcome_evaluations: [],
         adapter: null,
         guard: null,
         reason: null,
@@ -1112,6 +1134,109 @@ function ensureArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+function isPlainObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function validateCapabilityList(value, field, errors) {
+  if (!Array.isArray(value)) {
+    errors.push(`${field} must be an array`);
+    return;
+  }
+  for (const capability of value) {
+    if (!VERIFICATION_CAPABILITIES.has(capability)) {
+      errors.push(`${field} contains unsupported capability: ${capability}`);
+    }
+  }
+}
+
+function validateStringArray(value, field, errors) {
+  if (!Array.isArray(value)) {
+    errors.push(`${field} must be an array`);
+    return;
+  }
+  if (value.some((item) => typeof item !== "string")) {
+    errors.push(`${field} must contain only strings`);
+  }
+}
+
+function validateVerificationEnvironment(environment, errors) {
+  if (environment == null) return;
+  if (!isPlainObject(environment)) {
+    errors.push("verification_environment must be an object or null");
+    return;
+  }
+  for (const field of ["shell", "filesystem", "git_diff", "browser", "playwright_mcp", "network"]) {
+    if (environment[field] != null && typeof environment[field] !== "boolean") {
+      errors.push(`verification_environment.${field} must be boolean`);
+    }
+  }
+  if (environment.capabilities != null) {
+    validateCapabilityList(environment.capabilities, "verification_environment.capabilities", errors);
+  }
+  if (environment.limitations != null) {
+    validateStringArray(environment.limitations, "verification_environment.limitations", errors);
+  }
+}
+
+function validateOutcomeEvaluations(report, errors) {
+  const rows = report?.outcome_evaluations;
+  if (!Array.isArray(rows)) {
+    errors.push("outcome_evaluations must be an array");
+    return;
+  }
+  if (report.status === "PASS" && rows.some((row) => row?.verdict !== "PASS")) {
+    errors.push("top-level PASS requires every outcome_evaluations row verdict to be PASS");
+  }
+  rows.forEach((row, index) => {
+    const prefix = `outcome_evaluations[${index}]`;
+    if (!isPlainObject(row)) {
+      errors.push(`${prefix} must be an object`);
+      return;
+    }
+    for (const field of ["id", "source_requirement", "expected_outcome", "verdict"]) {
+      if (typeof row[field] !== "string" || row[field].trim() === "") {
+        errors.push(`${prefix}.${field} must be a non-empty string`);
+      }
+    }
+    if (!OUTCOME_VERDICTS.has(row.verdict)) {
+      errors.push(`${prefix}.verdict must be PASS, FAIL, BLOCKED, or CONDITIONAL_PASS`);
+    }
+    validateCapabilityList(row.preferred_verification, `${prefix}.preferred_verification`, errors);
+    validateCapabilityList(row.available_verification, `${prefix}.available_verification`, errors);
+    if (!isPlainObject(row.evidence_strength)) {
+      errors.push(`${prefix}.evidence_strength must be an object`);
+    } else {
+      validateCapabilityList(row.evidence_strength.strongest_possible, `${prefix}.evidence_strength.strongest_possible`, errors);
+      validateCapabilityList(row.evidence_strength.strongest_available, `${prefix}.evidence_strength.strongest_available`, errors);
+      if (row.evidence_strength.limitation != null && typeof row.evidence_strength.limitation !== "string") {
+        errors.push(`${prefix}.evidence_strength.limitation must be a string`);
+      }
+    }
+    if (!Array.isArray(row.evidence)) errors.push(`${prefix}.evidence must be an array`);
+    validateStringArray(row.invalid_pass_conditions, `${prefix}.invalid_pass_conditions`, errors);
+    if (row.verdict === "PASS" && Array.isArray(row.evidence) && row.evidence.length === 0) {
+      errors.push(`${prefix}.PASS requires row evidence`);
+    }
+    if (row.verdict === "CONDITIONAL_PASS") {
+      const hasLimitation = typeof row.limitation === "string" && row.limitation.trim() !== "";
+      const hasCapabilityLimitation = Array.isArray(row.capability_limitations) && row.capability_limitations.length > 0;
+      if (!hasLimitation && !hasCapabilityLimitation) {
+        errors.push(`${prefix}.CONDITIONAL_PASS requires limitation or capability_limitations`);
+      }
+    }
+    if (row.capability_limitations != null) {
+      validateStringArray(row.capability_limitations, `${prefix}.capability_limitations`, errors);
+    }
+    if (row.required_external_check != null) {
+      validateStringArray(row.required_external_check, `${prefix}.required_external_check`, errors);
+    }
+    if (row.finding != null && typeof row.finding !== "string") {
+      errors.push(`${prefix}.finding must be a string`);
+    }
+  });
+}
+
 function reportAdapterMeta(adapter, result = {}) {
   return {
     agent: adapter?.agent || null,
@@ -1137,6 +1262,8 @@ function blockedReport({ role, unitId, reason, summary, adapter, guard, stdout, 
     findings: reason ? [{ id: reason, severity: "blocking", summary }] : [],
     blocking_question: null,
     next_action: "supervisor_review",
+    verification_environment: null,
+    outcome_evaluations: [],
     adapter: adapter || null,
     guard: guard || { allowed_surface_violations: [], role_violations: [], warnings: [] },
     reason,
@@ -1160,8 +1287,11 @@ function normalizeReport(report, { role, unitId, adapter, guard }) {
     findings: ensureArray(report.findings),
     blocking_question: report.blocking_question ?? null,
     next_action: report.next_action || "",
+    verification_environment: report.verification_environment ?? null,
+    outcome_evaluations: ensureArray(report.outcome_evaluations),
     adapter,
     guard,
+    reason: report.reason ?? null,
   };
 }
 
@@ -1180,6 +1310,8 @@ function validateWorkerReport(report, { role, unitId }) {
     errors.push("blocking_question requires BLOCKED status");
   }
   if (role === "verifier" && report?.changed_surfaces?.length > 0) errors.push("verifier must not report changed surfaces");
+  validateVerificationEnvironment(report?.verification_environment, errors);
+  validateOutcomeEvaluations(report, errors);
   return errors;
 }
 

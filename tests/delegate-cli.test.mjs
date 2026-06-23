@@ -157,6 +157,112 @@ test("delegate rejects PASS reports without evidence", () => {
   assert.match(report.summary, /PASS requires non-empty evidence/);
 });
 
+test("delegate rejects CONDITIONAL_PASS as a top-level WorkerReportV1 status", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-conditional-status",
+    "--adapter-command",
+    adapterCommand("conditional-status"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-conditional-status"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /status must be PASS, FAIL, or BLOCKED/);
+});
+
+test("delegate rejects top-level PASS when an outcome row is only conditionally observed", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-conditional-row",
+    "--adapter-command",
+    adapterCommand("pass-conditional-outcome"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-conditional-row"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /top-level PASS requires every outcome_evaluations row verdict to be PASS/);
+});
+
+test("delegate accepts conditional outcome rows when the worker blocks final green status", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-blocked-conditional-row",
+    "--adapter-command",
+    adapterCommand("blocked-conditional-outcome"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-blocked-conditional-row"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, null);
+  assert.equal(report.outcome_evaluations[0].verdict, "CONDITIONAL_PASS");
+  assert.match(report.outcome_evaluations[0].limitation, /browser capability is unavailable/);
+});
+
+test("delegate rejects PASS outcome rows without row-mapped evidence", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-outcome-no-evidence",
+    "--adapter-command",
+    adapterCommand("pass-outcome-no-row-evidence"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-outcome-no-evidence"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /PASS requires row evidence/);
+});
+
+test("delegate rejects unknown outcome verification capabilities", () => {
+  const report = runJson([
+    "delegate",
+    "--agent",
+    "codex",
+    "--role",
+    "verifier",
+    "--unit",
+    "U-unknown-capability",
+    "--adapter-command",
+    adapterCommand("pass-outcome-unknown-capability"),
+    "--prompt-mode",
+    "stdin",
+    ...dossierArgs("verifier", "U-unknown-capability"),
+  ]);
+
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.match(report.summary, /unsupported capability: telepathy_probe/);
+});
+
 test("delegate returns normalized BLOCKED when adapter executable is missing", () => {
   const report = runJson([
     "delegate",

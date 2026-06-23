@@ -122,9 +122,11 @@ Options:
 
 ### `delegate`
 
-Run one role-scoped worker through an installed Codex or Claude Code CLI and print exactly one normalized `WorkerReportV1` JSON object. Missing or invalid `DossierV1` contracts, missing CLIs, invalid worker output, timeouts, non-zero PASS results, PASS without evidence, forbidden-surface changes, and verifier mutations become `BLOCKED` reports instead of unstructured prose.
+Run one role-scoped worker through an installed Codex or Claude Code CLI and print exactly one normalized `WorkerReportV1` JSON object. Missing or invalid `DossierV1` contracts, missing CLIs, invalid worker output, timeouts, non-zero PASS results, PASS without evidence, top-level `CONDITIONAL_PASS`, PASS with conditional outcome rows, forbidden-surface changes, and verifier mutations become `BLOCKED` reports instead of unstructured prose.
 
 The report schema lives at `schemas/worker-report-v1.schema.json`. The Codex adapter passes it via `--output-schema`; the Claude Code adapter passes it via `--json-schema`; every adapter is still wrapper-validated after the run.
+
+`WorkerReportV1.status` remains `PASS`, `FAIL`, or `BLOCKED`. Outcome-bearing verifier reports may include `verification_environment` and `outcome_evaluations`; `CONDITIONAL_PASS` is allowed only as an outcome row verdict to record strongly inferred but not fully observable behavior.
 
 `--dossier` is a hard preflight gate. It must parse as `DossierV1` and pass concrete-field checks before the worker process starts. The delegate command uses `allowed_surfaces` and `forbidden_surfaces` from the dossier as surface guards unless explicit CLI surface flags are provided.
 
