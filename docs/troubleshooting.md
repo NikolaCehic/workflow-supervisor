@@ -4,6 +4,12 @@
 
 Keep `policy.allow_implicit_invocation: false`. Use explicit `$skill-name` invocation until live routing tests prove trigger precision.
 
+## Workflow Supervisor is used for a tiny edit
+
+If Workflow Supervisor was not explicitly invoked and the task has obvious files, obvious acceptance, and no hard supervisor trigger, do not invoke the skill. Execute directly and run the relevant check.
+
+If the user explicitly invoked `workflow-supervisor`, `$workflow-supervisor`, or said to use the skill, do not silently skip it. Select the lightest valid profile, usually `lean_work_unit_runner` for bounded unit work or `planning_only` when the user only needs sequencing, and explain that direct execution would normally fit a tiny edit.
+
 ## The agent cannot find the skills
 
 Run:
@@ -32,6 +38,10 @@ Do not remove work units to make the process lean. If a unit cannot name its bou
 ## Native subagents remain open after completion
 
 Treat this as a lifecycle bug, not a cosmetic cleanup task. A terminal report or completed notification does not close a native Codex subagent. Record every native worker id in `WORKER-MAP.md`, call the native close action such as `close_agent` after the terminal report or blocker is captured, and block the final outcome if any native worker lacks a close result. Prefer one-shot portable delegation when it satisfies the work.
+
+## Unsupported gauntlet summaries are used as proof
+
+Unsupported external gauntlet summaries are not validation evidence. Treat them as raw leads only unless they preserve per-scenario reports, commands, artifacts, and expected outcomes that another maintainer can inspect. Use repo-native tests, fixtures, `npm run validate`, and live adapter probes such as `workflow-supervisor delegate-doctor --agent all --probe --require-pass` for real confidence.
 
 ## Verification rubber-stamps the result
 

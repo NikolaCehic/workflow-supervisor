@@ -4,6 +4,16 @@
 
 Coordinate explicit supervised or agent-loop workflows with profile-based overhead. It starts by selecting `lean_work_unit_runner`, `strict_full_workflow`, or `planning_only`, then completes the intake needed for that profile before implementation, goal binding, worker delegation, or final disposition. The user must answer required intake items; the supervisor must not infer path, mode, delegation, final disposition, or boundaries from vague keywords. Lean mode is for large already-bounded work-unit backlogs: it keeps a compact ledger with unit id, source reference, scope, done signal, check, status, touched surfaces, and blockers, then executes one ready unit at a time with targeted checks and escalation gates. Strict mode creates a source-requirement coverage ledger and SPEC review gate before work units so controlling-source deliverables, roadmap phases, and exit criteria are either implemented, explicitly deferred, blocked, or marked non-material. In human-in-loop mode, the human can ask questions, request revisions, block, defer, or approve before execution. In autonomous goal mode, human clarification pauses resume from recorded workflow state after the answer updates only affected downstream artifacts. Strict mode can orchestrate named workers from dossiers through the portable delegate command or an approved native adapter. Native threads and subagents require a recorded native resource id plus a close result, such as `close_agent` for Codex subagents, before a worker is `closed`. Loading the skill itself does not spawn workers. It binds Codex goals only after complete intake and when the user or environment authorizes goal-oriented work, checks active goal state first, avoids unrelated active-goal collisions, and treats terminal blocked goals as history when resuming through workflow docs.
 
+Route first before profile selection. If Workflow Supervisor was not explicitly invoked and the task is a small, clear edit with obvious files and acceptance, do not use Workflow Supervisor; execute directly. If the user explicitly invokes `workflow-supervisor`, `$workflow-supervisor`, or says to use the skill, select the proportional profile instead of silently skipping the supervisor.
+
+| Situation | Route |
+|---|---|
+| Small, clear edit with obvious files and acceptance | Do not use Workflow Supervisor. Execute directly. |
+| Large bounded backlog with clear unit done signals | `lean_work_unit_runner`. |
+| Broad, ambiguous, source-of-truth, delegated, security-sensitive, dirty-state, release, resume, or externally published work | `strict_full_workflow`. |
+| Sequencing, risk review, or backlog shaping only | `planning_only`. |
+| Runnable uncertainty before implementation | Create a discovery or prototype unit first. |
+
 ## `source-corpus`
 
 Rank and reconcile sources when authority, freshness, contradictions, access rights, or evidence gaps change the safe next action. It supports `allowed_next_action`: discovery, provisional draft, production change, or blocked.
