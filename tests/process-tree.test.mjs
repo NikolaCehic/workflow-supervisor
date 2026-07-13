@@ -40,7 +40,7 @@ test("Windows npm command shims resolve without shell interpolation", (t) => {
     platform: "win32",
   });
   assert.equal(invocation.command, process.execPath);
-  assert.deepEqual(invocation.args, [target, ...forwarded]);
+  assert.deepEqual(invocation.args, [fs.realpathSync(target), ...forwarded]);
 
   const nativeTarget = path.join(directory, "node_modules", "fixture", "native.exe");
   fs.writeFileSync(nativeTarget, "native fixture placeholder");
@@ -53,8 +53,48 @@ test("Windows npm command shims resolve without shell interpolation", (t) => {
     env: { PATH: directory, PATHEXT: ".EXE;.CMD" },
     platform: "win32",
   });
-  assert.equal(nativeInvocation.command, nativeTarget);
+  assert.equal(nativeInvocation.command, fs.realpathSync(nativeTarget));
   assert.deepEqual(nativeInvocation.args, forwarded);
+
+  if (process.platform !== "win32") {
+    const linkedNative = path.join(directory, "linked-native.EXE");
+    fs.symlinkSync(nativeTarget, linkedNative);
+    const linkedInvocation = prepareProcessInvocation({
+      command: linkedNative,
+      args: forwarded,
+      cwd: directory,
+      env: { PATH: directory, PATHEXT: ".EXE;.CMD" },
+      platform: "win32",
+    });
+    assert.equal(linkedInvocation.command, fs.realpathSync(nativeTarget));
+    assert.deepEqual(linkedInvocation.args, forwarded);
+
+    const dangling = path.join(directory, "dangling.EXE");
+    fs.symlinkSync(path.join(directory, "missing.exe"), dangling);
+    assert.throws(
+      () => prepareProcessInvocation({
+        command: dangling,
+        args: [],
+        cwd: directory,
+        env: { PATH: directory, PATHEXT: ".EXE;.CMD" },
+        platform: "win32",
+      }),
+      (error) => error?.code === "ENOENT",
+    );
+
+    const linkedDirectory = path.join(directory, "directory.EXE");
+    fs.symlinkSync(path.join(directory, "node_modules"), linkedDirectory, "dir");
+    assert.throws(
+      () => prepareProcessInvocation({
+        command: linkedDirectory,
+        args: [],
+        cwd: directory,
+        env: { PATH: directory, PATHEXT: ".EXE;.CMD" },
+        platform: "win32",
+      }),
+      (error) => error?.code === "ENOENT",
+    );
+  }
 
   const unknown = path.join(directory, "unknown.CMD");
   fs.writeFileSync(unknown, "@ECHO off\r\necho unsafe\r\n");
