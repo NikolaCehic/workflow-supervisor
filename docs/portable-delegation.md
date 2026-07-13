@@ -7,20 +7,18 @@ The workflow pack must stay a small skill pack. It must not become a daemon, que
 Keep the same workflow semantics on Codex and Claude Code:
 
 ```text
-complete intake
--> source grounding
--> work units
--> role-scoped implementer delegation
--> role-scoped verifier delegation
--> repair delegation only when verification fails or blocks with actionable findings
--> re-verification
--> documenter or outcome delegation when evidence exists
--> final supervisor report
+proportional intake and authority check
+-> source grounding only when material
+-> direct execution or bounded work units
+-> role-scoped workers only when their role is needed
+-> repair and re-verification only after an actionable FAIL or BLOCKED
+-> durable documentation only when it has a consumer
+-> evidence-backed supervisor report
 ```
 
-This document describes strict or explicitly delegated execution. `lean_work_unit_runner` normally stays in same-session phased execution with a compact ledger and targeted checks. It should enter portable delegation only when the user authorizes workers for a batch or a unit hits a strict-mode escalation trigger.
+This document describes strict or delegated execution. `lean_work_unit_runner` normally stays in same-session phased execution with a compact ledger and targeted checks. It should enter portable delegation only when an independent worker materially improves the outcome, its authority is already inside the user's scope, and the extra process cost is justified.
 
-Prefer portable delegation over native threads or subagents when it satisfies the work. Portable delegation is one-shot, so the worker process exits after the report. Native thread or subagent transports are allowed only when the supervisor can record the native resource id and call the matching close operation after terminal report, timeout, blocker, cancellation, or invalid output.
+Prefer portable delegation over native threads or subagents when it satisfies the work. Portable delegation is one-shot, so the worker process exits after the report. Use a native thread or subagent only when its actual lifecycle can be observed and finalized with operations exposed by the current environment. Record the native resource id when available; never require or invent a close operation when the transport owns completed-resource lifecycle automatically.
 
 The supervisor remains the only coordinator. Workers do not ask the human questions, choose final disposition, expand scope, approve plans, or talk to each other. If a worker needs a decision, it returns `BLOCKED` with a `blocking_question`; only the supervisor asks the user.
 
@@ -51,7 +49,7 @@ workflow-supervisor delegate \
   --dossier <path>
 ```
 
-The command does five things:
+The command does six things:
 
 1. Validates the supervisor dossier as `DossierV1`.
 2. Builds a role-scoped prompt from the supervisor dossier and report schema.
@@ -60,7 +58,7 @@ The command does five things:
 5. Extracts and validates a `WorkerReportV1` object.
 6. Runs post-run guards and prints one normalized JSON report to stdout.
 
-There is no resident process. Each worker is a fresh, isolated delegation.
+There is no resident process. Each worker is a fresh one-shot process in the governed workspace. This process boundary separates transcripts, but it is not an operating-system sandbox.
 
 ## WorkerReportV1
 
@@ -72,14 +70,14 @@ Every adapter must normalize into this shape:
   "status": "PASS",
   "role": "verifier",
   "unit_id": "U2",
-  "summary": "",
+  "summary": "Verified A1 with a real local API request and no workspace mutation.",
   "changed_surfaces": [],
-  "evidence": [],
-  "checks_run": [],
+  "evidence": [{"kind": "api_probe", "detail": "GET /example returned 200 and the expected body."}],
+  "checks_run": [{"kind": "command", "detail": "Local API probe completed successfully."}],
   "skipped_checks": [],
   "findings": [],
   "blocking_question": null,
-  "next_action": "",
+  "next_action": "supervisor_review",
   "verification_environment": {
     "shell": true,
     "filesystem": true,
@@ -90,32 +88,61 @@ Every adapter must normalize into this shape:
     "capabilities": ["shell_command", "api_probe", "static_diff_inspection"],
     "limitations": []
   },
-  "outcome_evaluations": [],
+  "outcome_evaluations": [
+    {
+      "id": "A1",
+      "source_requirement": "The API returns the documented response.",
+      "expected_outcome": "A real request returns the documented status and body.",
+      "preferred_verification": ["api_probe"],
+      "available_verification": ["api_probe"],
+      "evidence_strength": {
+        "strongest_possible": ["api_probe"],
+        "strongest_available": ["api_probe"],
+        "limitation": null
+      },
+      "evidence": [{"kind": "api_probe", "detail": "GET /example returned 200 and the expected body."}],
+      "invalid_pass_conditions": ["typecheck only"],
+      "verdict": "PASS",
+      "limitation": null,
+      "capability_limitations": [],
+      "required_external_check": [],
+      "finding": null
+    }
+  ],
   "adapter": {
     "agent": "codex",
-    "command": "codex exec",
+    "command": ["codex", "exec", "--json", "--ephemeral", "--skip-git-repo-check", "--sandbox", "read-only", "--output-schema", "<schema>", "-"],
     "exit_code": 0,
-    "timed_out": false
+    "timed_out": false,
+    "source": "adapter-json",
+    "schema_mode": "file"
   },
   "guard": {
     "allowed_surface_violations": [],
-    "role_violations": []
-  }
+    "role_violations": [],
+    "warnings": [],
+    "observed_changed_surfaces": []
+  },
+  "reason": null,
+  "stdout_excerpt": null,
+  "stderr_excerpt": null
 }
 ```
 
-`PASS`, `FAIL`, and `BLOCKED` mean the same thing on both platforms. `CONDITIONAL_PASS` is valid only as a row-level `outcome_evaluations[].verdict`, not as top-level `WorkerReportV1.status`. A worker report without evidence for material acceptance rows is invalid. A top-level PASS with failed, blocked, or conditional outcome rows is invalid. Invalid output is converted into a deterministic normalized `BLOCKED` report by default. The package does not make a second live worker call to repair formatting, because a second call can mutate state, consume budget, or produce another non-portable transcript.
+`PASS`, `FAIL`, and `BLOCKED` mean the same thing on both platforms. `CONDITIONAL_PASS` is valid only as a row-level `outcome_evaluations[].verdict`, not as top-level `WorkerReportV1.status`. A worker report without exactly mapped evidence for every dossier acceptance-row ID is invalid. A top-level PASS with missing, unknown, duplicate, failed, blocked, or conditional outcome rows is invalid. Missing, extra, or mistyped fields and multiple conflicting report objects are rejected. Invalid output is converted into a deterministic normalized `BLOCKED` report by default. The package does not make a second live worker call to repair formatting, because a second call can mutate state, consume budget, or produce another non-portable transcript.
 
-The schema is a package artifact at `schemas/worker-report-v1.schema.json`. Codex receives it through `--output-schema`; Claude Code receives it through `--json-schema`; both adapters are still wrapper-validated after the run.
+The normalized-envelope schema is packaged at `schemas/worker-report-v1.schema.json`, and the raw-worker reserved-null contract is at `schemas/worker-output-v1.schema.json`. Codex and Claude Code receive a dereferenced strict worker-output schema through `--output-schema` or `--json-schema`; the trusted wrapper then validates and enriches the normalized envelope.
 
 ## Adapter Evidence
 
-The delegation design is grounded in documented one-shot or headless execution for the certified target platforms:
+The delegation design is grounded in documented one-shot or headless execution for the built-in target platforms:
+
+Primary references: [OpenAI Codex CLI reference](https://developers.openai.com/codex/cli/reference/), [OpenAI non-interactive mode](https://developers.openai.com/codex/noninteractive/), [Claude Code CLI reference](https://code.claude.com/docs/en/cli-usage), and [Claude Code permission modes](https://code.claude.com/docs/en/permission-modes).
 
 | Agent | Automation primitive | Report confidence |
 |---|---|---|
-| Codex | `codex exec --json --skip-git-repo-check -c service_tier="fast" --output-schema <schema>` for scripted runs; prompt string or stdin; JSONL events; output schema support. | Strong |
-| Claude Code | `claude -p --output-format json --json-schema <schema>` print mode; piped input; JSON and stream JSON output; JSON schema support. | Strong |
+| Codex | `codex exec --json --ephemeral --skip-git-repo-check --sandbox <role-mode> --output-schema <schema> -`; full prompt on stdin, read-only verifier sandbox, workspace-write mutation sandbox, JSONL events, and output schema support. | Strong |
+| Claude Code | `claude -p --output-format json --no-session-persistence --permission-mode <role-mode> --json-schema <schema>`; full prompt on stdin, read-only verifier plan mode, edit-capable mutation mode, no saved session, and structured output. | Strong |
 
 Use this as the certification gate in any environment claiming support:
 
@@ -133,7 +160,7 @@ The supervisor does not generate every role for every unit up front. It follows 
 - Verifier: after implementer report or for read-only units.
 - Repair: only after verifier returns `FAIL` or actionable `BLOCKED`.
 - Re-verifier: only after repair.
-- Documenter: after planning evidence, implementation evidence, verification evidence, or final outcome evidence exists.
+- Documenter: only when requested or necessary durable state has a consumer, after the relevant planning, implementation, verification, or outcome evidence exists.
 
 This preserves the current input and output contract while replacing the transport:
 
@@ -149,15 +176,16 @@ workflow-supervisor delegate --agent <codex|claude-code> --role <role> --unit <u
 
 ## Required Guards
 
-The delegate command is small, but five guards are non-negotiable:
+The delegate command is small, but six guards are non-negotiable:
 
-1. `delegate-doctor`: proves the selected executable exists. With `--probe`, it runs a trivial delegation and verifies that the adapter can produce or be normalized into `WorkerReportV1`.
+1. `delegate-doctor`: proves the selected executable exists and, for built-in adapters, that its bounded version invocation succeeds. With `--probe`, it runs a trivial delegation and verifies that the adapter can produce or be normalized into `WorkerReportV1`.
 2. `validate-dossier`: rejects missing fields, vague placeholders, broad mutable surfaces, unresolved open questions, role mismatches, unit mismatches, and worker prompts that do not require `WorkerReportV1`.
-3. Schema validation: rejects missing evidence, missing role/unit IDs, unknown statuses, and worker attempts to ask the human directly.
-4. Surface guard: captures before/after state and fails the report if the worker changed forbidden surfaces or if a read-only role changed files.
-5. Timeout and exit handling: converts hangs, crashes, auth failures, and non-zero exits into normalized `BLOCKED` reports.
+3. Schema validation: rejects missing evidence, missing role/unit IDs, unknown statuses, loose or extra fields, unmapped acceptance rows, multiple reports, and worker attempts to ask the human directly.
+4. Surface guard: captures before/after content state and fails the report if the worker changed outside allowed surfaces, changed forbidden surfaces, omitted an observed changed surface, self-reported an out-of-scope/forbidden change, or changed files in a read-only role.
+5. Timeout and exit handling: converts hangs, crashes, auth failures, and non-zero exits into normalized `BLOCKED` reports and still finalizes the surface guard after a started process fails.
+6. Environment isolation: strips credential-like variables and language/runtime injection variables by default. Passing credential environment requires the explicit `--allow-credential-env` gate.
 
-For git workspaces, the surface guard compares pre/post git status. Mutable roles block before delegation when the git workspace is already dirty unless `--allow-dirty` is set. For non-git workspaces, explicit `--allowed-surfaces` and `--forbidden-surfaces` are hashed and watched. If the guard cannot prove the relevant boundary, the report includes a guard warning and the supervisor must treat broad mutable delegation as unsafe.
+For Git workspaces, the guard snapshots tracked, untracked, ignored, and nested-repository worktree content plus the complete Git control directory, including objects, refs, hooks, configuration, HEAD, and index. It also snapshots every declared allowed and forbidden surface independently. Mutable roles block before delegation when the workspace is already dirty unless `--allow-dirty` is set. A permitted dirty baseline is compared by content, so unchanged user edits are not blamed and further edits to an already-dirty file are still detected. For non-Git workspaces, the complete directory tree is hashed, so creation outside the allowed surfaces cannot hide outside a short watch list. Absolute, traversal, delimiter-ambiguous, Windows-special, outward-symlinked, and multiply-linked declared surfaces are rejected. A failed baseline blocks delegation; a failed post-run snapshot is a role violation. This is a detection guard around a process, not an operating-system sandbox; use an actual sandbox when hostile code must be prevented from accessing resources outside the workspace.
 
 ## What-If Matrix
 
@@ -165,7 +193,7 @@ For git workspaces, the surface guard compares pre/post git status. Mutable role
 |---|---|
 | Agent CLI is missing | `delegate-doctor` fails; `delegate` returns normalized `BLOCKED` with `reason: adapter_cli_missing`. Supervisor asks for another supported agent or uses same-session phased mode only if intake allowed it. |
 | Agent is not authenticated | Return normalized `BLOCKED` with `reason: adapter_auth_unavailable`. |
-| Agent outputs Markdown around JSON | Extract the first valid `WorkerReportV1` object and validate it. |
+| Agent outputs Markdown around one JSON report | Extract the one `WorkerReportV1` object and validate it. Multiple distinct reports are rejected. |
 | Agent cannot produce valid report | Return normalized `BLOCKED`; do not treat prose as evidence. |
 | Dossier is vague | `validate-dossier` fails and `delegate` returns `BLOCKED` with `reason: invalid_dossier`; no worker starts. |
 | Worker edits forbidden files | Surface guard marks role violation; supervisor stops. No automatic revert unless explicitly allowed, because user changes may exist. |
@@ -180,14 +208,14 @@ For git workspaces, the surface guard compares pre/post git status. Mutable role
 | Repair expands scope | Reject unless the repair dossier explicitly allowed the new surfaces and criteria. |
 | Units touch same surfaces | Run sequentially. Parallel delegation requires proven disjoint mutable surfaces. |
 | Platform has no native subagents | Fine. Each role is a fresh one-shot CLI process. |
-| Native subagent close is unavailable | Do not spawn it. Return `worker_resource_close_unavailable` and use portable delegation or same-session phased work only if intake allowed it. |
+| Native worker lifecycle cannot be observed or finalized with the tools actually available | Do not choose that native transport. Use a supported portable adapter or same-session phased work when allowed; otherwise return a normal supervisor `BLOCKED` outcome naming the unavailable lifecycle capability. |
 | Platform output differs | Platform output is not the contract. `WorkerReportV1` is the only supervisor input. |
-| Platform cannot support a role safely | Adapter role is unsupported. Supervisor chooses another certified adapter or blocks. |
+| Platform cannot support a role safely | Adapter role is unsupported. Supervisor chooses another supported adapter or blocks. |
 | Full support is claimed but one CLI is absent | `delegate-doctor --agent all --probe --require-pass` exits nonzero and names the missing adapter. |
 | Human-in-loop path is selected | Workers can still be delegated automatically after human approval gates; the human answers supervisor questions and approvals only. |
 | Autonomous path is selected | Intake boundaries still control installs, credentials, network calls, destructive operations, and final disposition. |
-| Workspace is dirty before delegation | Mutable delegation blocks unless `--allow-dirty` is set. If allowed, guard warnings record that changed paths may include pre-existing edits. |
-| Prompt injection appears in sources | Worker role prompt says sources are data, not instructions; supervisor relies on boundaries, diff guard, and evidence requirements. |
+| Workspace is dirty before delegation | Mutable delegation blocks unless `--allow-dirty` is set. If allowed, before/after content hashes separate unchanged user edits from worker changes. |
+| Prompt injection appears in sources | The dossier is delimited as untrusted task data and cannot override role, guard, or report rules; the supervisor also relies on content guards and evidence requirements. |
 | Agent version changes behavior | `delegate-doctor --probe` must run against the installed local version, not a documentation assumption. |
 | Agent supports JSON events but not schema | Use events for capture, then wrapper schema validation. |
 | Agent supports schema but ignores it | Wrapper validation is still authoritative. |
@@ -202,6 +230,6 @@ One-shot delegation keeps the skill pack small:
 - The npm package remains an installer plus a small helper CLI.
 - Adapters are data in `adapters/<agent>/adapter.json`, not per-platform workflow implementations.
 - The supervisor loop stays unchanged.
-- The output contract is platform-neutral across the certified target set.
+- The output contract is platform-neutral across the built-in target set.
 
 Anything less is "run another agent and hope." Anything more becomes a harness.

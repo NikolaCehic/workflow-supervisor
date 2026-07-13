@@ -5,9 +5,16 @@
   "metadata": "SKILL.md",
   "fallback": "workflow-supervisor emit-context --agent claude-code --out CLAUDE.md",
   "delegate": {
-    "command": ["claude", "-p", "--output-format", "json"],
-    "promptMode": "arg",
+    "command": ["claude", "-p", "--output-format", "json", "--no-session-persistence"],
+    "versionArgs": ["--version"],
+    "promptMode": "stdin",
     "schemaMode": "json",
-    "schemaFlag": "--json-schema"
+    "schemaFlag": "--json-schema",
+    "roleArgs": {
+      "implementer": ["--permission-mode", "acceptEdits"],
+      "verifier": ["--permission-mode", "plan"],
+      "repair": ["--permission-mode", "acceptEdits"],
+      "documenter": ["--permission-mode", "acceptEdits"]
+    }
   }
 }

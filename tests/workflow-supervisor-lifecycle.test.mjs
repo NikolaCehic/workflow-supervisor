@@ -5,505 +5,269 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const skillText = fs.readFileSync(path.join(repoRoot, "skills/workflow-supervisor/SKILL.md"), "utf8");
-const loopPolicyText = fs.readFileSync(path.join(repoRoot, "skills/loop-policy/SKILL.md"), "utf8");
-const workUnitText = fs.readFileSync(path.join(repoRoot, "skills/work-unit/SKILL.md"), "utf8");
-const acceptanceText = fs.readFileSync(path.join(repoRoot, "skills/acceptance-matrix/SKILL.md"), "utf8");
-const dossierBuilderText = fs.readFileSync(path.join(repoRoot, "skills/dossier-builder/SKILL.md"), "utf8");
-const workflowDocsText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/SKILL.md"), "utf8");
-const workflowControlText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/workflow-control.md"), "utf8");
-const goalResumeText = fs.readFileSync(path.join(repoRoot, "skills/workflow-docs/references/goal-resume.md"), "utf8");
-const readmeText = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
-const artifactsText = fs.readFileSync(path.join(repoRoot, "docs/artifacts.md"), "utf8");
-const troubleshootingText = fs.readFileSync(path.join(repoRoot, "docs/troubleshooting.md"), "utf8");
-const skillReferenceText = fs.readFileSync(path.join(repoRoot, "docs/skill-reference.md"), "utf8");
-const dossierSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/dossier-v1.schema.json"), "utf8");
-const workerReportSchemaText = fs.readFileSync(path.join(repoRoot, "schemas/worker-report-v1.schema.json"), "utf8");
-const agentPrompt = fs.readFileSync(
-  path.join(repoRoot, "skills/workflow-supervisor/agents/openai.yaml"),
-  "utf8",
-);
+const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), "utf8");
+const skill = read("skills/workflow-supervisor/SKILL.md");
+const profileRef = read("skills/workflow-supervisor/references/profiles-and-intake.md");
+const strictRef = read("skills/workflow-supervisor/references/strict-workflow.md");
+const delegationRef = read("skills/workflow-supervisor/references/delegation-and-reports.md");
+const planningRef = read("skills/workflow-supervisor/references/planning-and-discovery.md");
+const resumeRef = read("skills/workflow-supervisor/references/goal-and-resume.md");
+const loopPolicy = read("skills/loop-policy/SKILL.md");
+const workUnit = read("skills/work-unit/SKILL.md");
+const workerRoles = read("skills/worker-roles/SKILL.md");
+const dossier = read("skills/dossier-builder/SKILL.md");
+const acceptance = read("skills/acceptance-matrix/SKILL.md");
+const sourceCorpus = read("skills/source-corpus/SKILL.md");
+const workflowDocs = read("skills/workflow-docs/SKILL.md");
+const templatesIndex = read("skills/workflow-docs/references/templates.md");
+const workflowFoundations = read("skills/workflow-docs/references/workflow-foundations.md");
+const workUnitDelegation = read("skills/workflow-docs/references/work-units-and-delegation.md");
+const verificationTemplates = read("skills/workflow-docs/references/verification-and-repair.md");
+const closeoutTemplates = read("skills/workflow-docs/references/decisions-handoff-and-outcome.md");
+const workflowControl = [workflowFoundations, workUnitDelegation, verificationTemplates, closeoutTemplates].join("\n");
+const planningTemplates = read("skills/workflow-docs/references/planning-outputs.md");
+const readme = read("README.md");
+const artifacts = read("docs/artifacts.md");
+const compatibility = read("docs/compatibility.md");
+const troubleshooting = read("docs/troubleshooting.md");
+const portableDelegation = read("docs/portable-delegation.md");
+const reportSchema = JSON.parse(read("schemas/worker-report-v1.schema.json"));
+const dossierSchema = JSON.parse(read("schemas/dossier-v1.schema.json"));
 
-const intakeFields = [
-  { id: "objective_and_source", label: "Objective and source" },
-  { id: "profile", label: "Profile" },
-  { id: "execution_path", label: "Execution path" },
-  { id: "mode", label: "Mode" },
-  { id: "delegation", label: "Delegation" },
-  { id: "final_disposition", label: "Final disposition" },
-  { id: "mutation_boundaries", label: "Boundaries" },
-  { id: "state_artifacts", label: "State artifacts" },
-];
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function frontmatterValue(text, key) {
+  const match = text.match(new RegExp(`^${key}:\\s*(.+)$`, "m"));
+  return match?.[1]?.trim() || "";
 }
 
-function isUnanswered(value) {
-  const normalized = value.trim().replace(/[.!?]+$/, "");
-  return !normalized || /^(use your judgment|you decide|whatever|default|n\/a)$/i.test(normalized);
+function topLevelYamlKeys(block) {
+  return [...block.matchAll(/^([a-z][a-z0-9_]*):/gm)].map((match) => match[1]);
 }
 
-function evaluateIntakeCompletion(prompt) {
-  const lines = prompt.split(/\r?\n/).map((line) => line.trim());
-  const answers = {};
-
-  for (const field of intakeFields) {
-    const pattern = new RegExp(`^(?:\\d+\\.\\s*)?${escapeRegExp(field.label)}\\s*:\\s*(.+)$`, "i");
-    const line = lines.find((candidate) => pattern.test(candidate));
-    const answer = line?.match(pattern)?.[1] || "";
-    if (!isUnanswered(answer)) answers[field.id] = answer;
+function parseOpenAiMetadata(text) {
+  const result = {};
+  let section = null;
+  for (const [index, line] of text.replace(/\r\n/g, "\n").split("\n").entries()) {
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+    const sectionMatch = line.match(/^([a-z_]+):$/);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      result[section] = {};
+      continue;
+    }
+    const property = line.match(/^  ([a-z_]+):\s*(.+)$/);
+    assert.ok(section && property, `invalid metadata YAML on line ${index + 1}`);
+    const raw = property[2];
+    if (raw === "true" || raw === "false") result[section][property[1]] = raw === "true";
+    else result[section][property[1]] = JSON.parse(raw);
   }
-
-  const missingDecisions = intakeFields.map((field) => field.id).filter((id) => !answers[id]);
-  if (missingDecisions.length > 0) {
-    return {
-      status: "requires_intake",
-      nextAction: "ask_unanswered_intake_items_then_stop",
-      missingDecisions,
-    };
-  }
-
-  return {
-    status: "intake_complete",
-    nextAction: "record_plan_from_completed_intake",
-    path: answers.execution_path,
-    missingDecisions: [],
-  };
+  return result;
 }
 
-test("workflow-supervisor contract requires complete intake before work starts", () => {
-  assert.match(skillText, /Run the complete intake gate before goal creation, worker delegation, implementation/);
-  assert.match(skillText, /1\. Run the complete intake gate/);
-  assert.match(skillText, /Do not use keywords to skip intake/);
-  assert.match(skillText, /Continue prompting until every required intake decision has an explicit user answer/);
-  assert.match(skillText, /Classify the workflow as `autonomous_goal` or `human_in_loop` only from completed intake answers/);
+test("route-first contract uses proportional profiles and direct execution", () => {
+  assert.match(skill, /Choose the route from the request and controlling source/);
+  assert.match(skill, /Small, clear task with obvious scope and acceptance \| Execute directly/);
+  assert.match(skill, /lean_work_unit_runner/);
+  assert.match(skill, /strict_full_workflow/);
+  assert.match(skill, /planning_only/);
+  assert.match(skill, /Do not run strict ceremony just because the skill was named/);
 });
 
-test("workflow-supervisor explicit invocation selects a proportional execution profile", () => {
-  assert.match(skillText, /first classify the workflow profile/);
-  assert.match(skillText, /lean_work_unit_runner/);
-  assert.match(skillText, /strict_full_workflow/);
-  assert.match(skillText, /planning_only/);
-  assert.match(skillText, /Do not run strict ceremony just because the skill was named/);
-  assert.match(skillText, /Lean mode optimizes for large-unit throughput while preserving non-ambiguity/);
-  assert.match(skillText, /Do not start a lean unit unless its boundary and done signal are clear/);
-  assert.match(skillText, /one compact ledger/);
-  assert.match(skillText, /Escalate a lean unit to `strict_full_workflow`/);
-});
-
-test("workflow-supervisor documents route-first behavior before profile selection", () => {
-  for (const text of [readmeText, skillText, skillReferenceText]) {
-    assert.match(text, /Route First|Route first/);
-    assert.match(text, /Small, clear edit with obvious files and acceptance/);
-    assert.match(text, /Do not use Workflow Supervisor\. Execute directly\./);
-    assert.match(text, /Large bounded backlog with clear unit done signals/);
-    assert.match(text, /`lean_work_unit_runner`\./);
-    assert.match(text, /Broad, ambiguous, source-of-truth, delegated, security-sensitive, dirty-state, release, resume, or externally published work/);
-    assert.match(text, /`strict_full_workflow`\./);
-    assert.match(text, /Sequencing, risk review, or backlog shaping only/);
-    assert.match(text, /`planning_only`\./);
-    assert.match(text, /Runnable uncertainty before implementation/);
-    assert.match(text, /Create a discovery or prototype unit first\./);
-  }
-
-  assert.match(skillText, /If Workflow Supervisor was not explicitly invoked and the task is a small, clear edit/);
-  assert.match(skillText, /When Workflow Supervisor is explicitly invoked, do not silently skip it/);
-  assert.match(readmeText, /This route check matters most when Workflow Supervisor was not explicitly invoked/);
-  assert.match(skillReferenceText, /select the proportional profile instead of silently skipping the supervisor/);
-  assert.match(troubleshootingText, /Workflow Supervisor is used for a tiny edit/);
-  assert.match(troubleshootingText, /If Workflow Supervisor was not explicitly invoked and the task has obvious files/);
-  assert.match(agentPrompt, /Route first/i);
-  assert.match(agentPrompt, /small clear edit with obvious files and acceptance/i);
-  assert.match(agentPrompt, /do not invoke it; execute directly/i);
-  assert.match(agentPrompt, /If \$workflow-supervisor was explicitly invoked, select the execution profile first/i);
-});
-
-test("workflow-supervisor strict profile retains worker-agent governance", () => {
-  assert.match(skillText, /Strict mode always requires:/);
-  assert.match(skillText, /source-requirement coverage ledger before work-unit finalization/);
-  assert.match(skillText, /SPEC review packet or `\.workflow\/SPEC\.md` before work-unit finalization/);
-  assert.match(skillText, /At least one bounded work unit, even for a tiny change/);
-  assert.match(skillText, /worker-agent plan with implementer, verifier, repair-author, and documenter agents/);
-  assert.match(skillText, /planned -> handed_off -> acknowledged -> reported -> verified -> resource_closed -> closed/);
-  assert.match(skillText, /Do not silently collapse worker agents into same-session work/);
-  assert.match(skillText, /Every worker report back to the supervisor must use this schema/);
-  assert.match(skillText, /role: implementer \| verifier \| repair-author \| documenter/);
-});
-
-test("workflow-supervisor requires native worker resources to be closed", () => {
-  assert.match(skillText, /## Native Worker Resource Lifecycle/);
-  assert.match(skillText, /A worker is not `closed` until its native resource has also been released/);
-  assert.match(skillText, /Record the native resource id immediately after creation/);
-  assert.match(skillText, /For Codex subagents, call `close_agent` with the recorded `agent_id`/);
-  assert.match(skillText, /open_native_worker/);
-  assert.match(skillText, /worker_resource_close_unavailable/);
-  assert.match(skillText, /worker_resource_close_failed/);
-  assert.match(skillText, /Do not use native thread or native subagent workers unless the environment exposes a close operation/);
-  assert.match(loopPolicyText, /native_worker_lifecycle:/);
-  assert.match(loopPolicyText, /codex_close_action: close_agent/);
-  assert.match(loopPolicyText, /blocked if any native worker lacks close_result/);
-  assert.match(workflowControlText, /Native Resource ID/);
-  assert.match(workflowControlText, /Close Action/);
-  assert.match(workflowControlText, /Close Result/);
-  assert.match(workflowControlText, /record the `spawn_agent` id as Native Resource ID and `close_agent` as Close Action/);
-  assert.match(readmeText, /A native worker is not closed just because it returned a report/);
-  assert.match(readmeText, /Final outcome is blocked while any native worker lacks a close result/);
-});
-
-test("workflow-supervisor baseline hardening contract is preserved", () => {
-  assert.match(skillText, /lean_work_unit_runner/);
-  assert.match(skillText, /strict_full_workflow/);
-  assert.match(skillText, /planning_only/);
-  assert.match(skillText, /one compact ledger/);
-  assert.match(skillText, /source-requirement coverage ledger before work-unit finalization/);
-  assert.match(skillText, /Acceptance matrix or acceptance draft with evidence expectations/i);
-  assert.match(skillText, /Native Worker Resource Lifecycle/);
-  assert.match(skillText, /ensure `<workspace>\/\.gitignore` contains `\.workflow\/`/);
-  assert.match(readmeText, /overhead is profile-dependent/);
-  assert.match(readmeText, /coverage ledger is the guardrail against "green but incomplete" outcomes/);
-  assert.match(workflowControlText, /## LEDGER\.md/);
-  assert.match(workflowControlText, /## WORKER-MAP\.md/);
-  assert.match(workflowControlText, /Close Result/);
-  assert.match(troubleshootingText, /Unsupported external gauntlet summaries are not validation evidence/);
-  assert.match(troubleshootingText, /per-scenario reports, commands, artifacts, and expected outcomes/);
-  assert.match(troubleshootingText, /Use repo-native tests, fixtures, `npm run validate`, and live adapter probes/);
-});
-
-test("workflow-supervisor documents the complete intake question", () => {
-  assert.match(skillText, /Before I start the supervisor loop, answer every intake item:/);
-  assert.match(skillText, /1\. Objective and source: what artifact, spec, repo path, document, ticket, or source set controls the work\?/);
-  assert.match(skillText, /2\. Profile: lean_work_unit_runner, strict_full_workflow, or planning_only\?/);
-  assert.match(skillText, /3\. Execution path: autonomous_goal or human_in_loop\?/);
-  assert.match(skillText, /4\. Mode: sequential, parallel where safe, or staged parallel\?/);
-  assert.match(skillText, /5\. Delegation: same-session phased, automated worker delegation, or native threads\/subagents if available\?/);
-  assert.match(skillText, /6\. Final disposition: keep local, open PR, push main, deploy\/publish, or ask at the end\?/);
-  assert.match(skillText, /7\. Boundaries: may I install dependencies, call external services, use credentials, or only edit local files\?/);
-  assert.match(skillText, /8\. State artifacts: compact ledger, `\.workflow\/` docs, another artifact directory, or inline state\?/);
-});
-
-test("workflow-supervisor intake does not offer manual handoff prompts as a delegation mode", () => {
-  assert.match(skillText, /automated_worker_delegation/);
-  assert.match(skillText, /native_threads_or_subagents_if_available/);
-  assert.match(skillText, /same_session_phased/);
-  assert.doesNotMatch(skillText, /handoff_prompts_only/);
-  assert.doesNotMatch(skillText, /same_thread_only/);
-  assert.match(skillText, /Do not use manual copy\/paste handoff as the primary path/);
-});
-
-test("workflow-supervisor keeps .workflow state out of git by default", () => {
-  assert.match(skillText, /ensure `<workspace>\/\.gitignore` contains `\.workflow\/` before creating those artifacts/);
-  assert.match(skillText, /must not be staged, committed, pushed, or included in a PR unless the user explicitly names workflow state as a final deliverable/);
-  assert.match(skillText, /ensure `\.gitignore` contains `\.workflow\/` before writing them/);
-});
-
-test("OpenAI metadata prompt preserves complete intake behavior", () => {
-  assert.match(agentPrompt, /\$workflow-supervisor/);
-  assert.match(agentPrompt, /select the execution profile first/i);
-  assert.match(agentPrompt, /lean_work_unit_runner/i);
-  assert.match(agentPrompt, /avoid subagents unless explicitly authorized/i);
-  assert.match(agentPrompt, /record each native resource id/i);
-  assert.match(agentPrompt, /close_agent/i);
-  assert.match(agentPrompt, /block final outcome if any native worker lacks a close result/i);
-  assert.match(agentPrompt, /Ask required intake questions/i);
-  assert.match(agentPrompt, /Do not infer path, mode, delegation, final disposition, or boundaries/i);
-  assert.match(agentPrompt, /source-requirement coverage ledger and SPEC review gate/i);
-  assert.match(agentPrompt, /do not hide unimplemented material requirements in residual risks or future work/i);
-});
-
-test("workflow-supervisor requires source coverage before units and closeout", () => {
-  assert.match(skillText, /## Source Requirement Coverage Gate/);
-  assert.match(skillText, /source deliverables, roadmap phases, exit criteria, named integrations, scale targets/);
-  assert.match(skillText, /in_current_scope/);
-  assert.match(skillText, /explicit_user_deferred/);
-  assert.match(skillText, /blocked_needs_decision/);
-  assert.match(skillText, /Do not weaken requirements while translating them into units or acceptance rows/);
-  assert.match(skillText, /Create exactly one implementation work unit only when all current-scope material requirements can be implemented and verified inside that one unit/);
-  assert.match(skillText, /Audit skipped checks, residual risks, future work, and next recommended actions against the source-requirement coverage ledger/);
-  assert.match(skillText, /workflow may be PASS only when every material requirement is mapped to a PASS acceptance row/);
-});
-
-test("workflow-supervisor requires SPEC Q&A approval before human-in-loop work units", () => {
-  assert.match(skillText, /## SPEC Review And Q&A Gate/);
-  assert.match(skillText, /The SPEC must include:/);
-  assert.match(skillText, /Q&A log/);
-  assert.match(skillText, /human verification decision with reviewer, decision, notes, and date/);
-  assert.match(skillText, /In `human_in_loop`, stop after presenting the draft SPEC and ask for review/);
-  assert.match(skillText, /Continue to final work units, dossiers, or implementation only after the SPEC has `Decision: Approved`/);
-  assert.match(skillText, /If the human asks questions, answer them and update the Q&A log before proceeding/);
-  assert.match(skillText, /Do not fabricate human approval/);
-  assert.match(skillText, /human-in-loop SPEC approval is missing, marked Needs Revision, marked Blocked, or has unanswered Q&A/);
-});
-
-test("workflow-supervisor resumes after human decisions without restarting autonomous goals", () => {
-  assert.match(skillText, /## Resume After Human Decision/);
-  assert.match(skillText, /Ask the smallest decision that can unblock progress/);
-  assert.match(skillText, /Do not re-ask complete intake unless a required intake decision is missing, contradicted, or directly changed by the blocker/);
-  assert.match(skillText, /Do not mark the Codex goal terminal `blocked` for a first material blocker/);
-  assert.match(skillText, /Re-run only the affected downstream steps/);
-  assert.match(skillText, /Invalidate stale work units, acceptance rows, dossiers, or worker reports whose assumptions changed/);
-  assert.match(skillText, /Continue from the recorded `Next Action`/);
-  assert.match(skillText, /If the prior Codex goal is terminal `blocked old`, do not assume it can be reopened/);
-  assert.match(skillText, /After the human answers, resume from the recorded next action and refresh only the affected downstream artifacts/);
-});
-
-test("loop-policy defines human-decision resume behavior", () => {
-  assert.match(loopPolicyText, /human_decision_resume_rule/);
-  assert.match(loopPolicyText, /ask the smallest blocking decision/);
-  assert.match(loopPolicyText, /resume without restarting intake unless intake changed/);
-  assert.match(loopPolicyText, /record blocker and next action before asking/);
-  assert.match(loopPolicyText, /continue from recorded next action/);
-});
-
-test("workflow-docs defines SPEC.md as the human review artifact", () => {
-  assert.match(workflowDocsText, /\.workflow\/SPEC\.md/);
-  assert.match(workflowDocsText, /human-reviewable interpretation contract, requirement coverage, Q&A, and approval decision/);
-  assert.match(workflowControlText, /## SPEC\.md/);
-  assert.match(workflowControlText, /Status: Draft \| Approved \| Needs Revision \| Blocked/);
-  assert.match(workflowControlText, /Proposed Disposition/);
-  assert.match(workflowControlText, /Final Disposition/);
-  assert.match(workflowControlText, /## Q&A Log/);
-  assert.match(workflowControlText, /## Human Verification/);
-});
-
-test("workflow-docs defines a compact lean runner ledger", () => {
-  assert.match(workflowDocsText, /\.workflow\/LEDGER\.md/);
-  assert.match(workflowDocsText, /compact lean-runner state/);
-  assert.match(workflowControlText, /## LEDGER\.md/);
-  assert.match(workflowControlText, /Profile: lean_work_unit_runner/);
-  assert.match(workflowControlText, /Source Ref \| Slice Type \| Scope \| Observable Behavior \| Done Signal \| Check \| Status/);
-  assert.match(readmeText, /Lean mode keeps work units but removes per-unit ceremony/);
-  assert.match(readmeText, /same-session phased execution is the default/);
-});
-
-test("workflow-docs defines resume checkpoints for human decisions and blocked goals", () => {
-  assert.match(workflowDocsText, /terminal blocked-goal history, and human-decision resume checkpoints/);
-  assert.match(workflowControlText, /## Blocking Decision/);
-  assert.match(workflowControlText, /## Resume Checkpoint/);
-  assert.match(workflowControlText, /Stale Artifacts Invalidated/);
-  assert.match(workflowControlText, /## GOAL-STATE\.md/);
-  assert.match(workflowControlText, /blocked old/);
-  assert.match(goalResumeText, /## Human Decision Resume Rule/);
-  assert.match(goalResumeText, /Do not restart complete intake unless the answer changes a required intake decision/);
-  assert.match(goalResumeText, /terminal blocked and cannot be reopened/);
-});
-
-test("workflow-supervisor forbids generic requirement downgrades that cause incomplete green runs", () => {
+test("safe defaults are inferred while consequential authority stays explicit", () => {
   for (const phrase of [
-    "live service import and query verification",
-    "required validation corpus size",
-    "named providers A and B",
-    "required batch analysis and report generation",
-    "provider-backed extraction and indexing",
+    "Infer reversible execution mechanics",
+    "Treat “use your judgment” as authorization to choose safe, reversible defaults",
+    "keep changes local unless the user explicitly requests",
+    "Ask only the smallest question",
+    "Never infer permission",
   ]) {
-    assert.match(skillText, new RegExp(escapeRegExp(phrase)));
+    assert.match(skill, new RegExp(phrase));
   }
+  assert.match(profileRef, /“Work autonomously until done” selects autonomous continuation/);
+  assert.match(profileRef, /“Keep changes local” selects local disposition/);
+  for (const authority of ["credentials", "paid", "destructive", "production", "publication", "external messages"]) {
+    assert.match(`${skill}\n${profileRef}`, new RegExp(authority, "i"));
+  }
+  assert.doesNotMatch(skill, /answer every intake item|Continue prompting until every required intake decision/);
+  assert.match(skill, /`execution_path`: use `autonomous_goal`/);
+  assert.match(skill, /use `human_in_loop`/);
+  assert.match(strictRef, /execution_path: human_in_loop/);
+});
 
-  for (const phrase of [
-    "live service load/query verification",
-    "required validation corpus size",
-    "named provider support",
-    "required analysis and report generation",
-    "provider-backed extraction or indexing",
+test("strict roles are selected on demand", () => {
+  assert.match(strictRef, /A read-only audit does not need an implementer/);
+  assert.match(strictRef, /Repair: only after an actionable FAIL\/BLOCKED finding/);
+  assert.match(workerRoles, /A green first pass needs no repair worker/);
+  assert.doesNotMatch(skill, /worker-agent plan with implementer, verifier, repair-author, and documenter/);
+  for (const role of ["implementer", "verifier", "repair", "documenter"]) {
+    assert.match(workerRoles, new RegExp("\\| `" + role + "` \\|"));
+  }
+  assert.match(workerRoles, /never creates authority/);
+  assert.doesNotMatch(workerRoles, /except unavoidable command side effects/);
+});
+
+test("native lifecycle is capability-based and names no invented close tool", () => {
+  const contract = [skill, delegationRef, loopPolicy, workflowControl, readme, compatibility, troubleshooting, portableDelegation].join("\n");
+  assert.match(contract, /Use only lifecycle operations|use only operations it actually exposes/i);
+  assert.match(contract, /platform-managed|manages completed resources automatically/i);
+  assert.doesNotMatch(contract, /close_agent/);
+  assert.doesNotMatch(contract, /open_native_worker|worker_resource_close_unavailable/);
+  assert.doesNotMatch(portableDelegation, /complete intake|role-scoped implementer delegation|fresh, isolated delegation/);
+});
+
+test("canonical WorkerReportV1 contract matches packaged status and role enums", () => {
+  assert.deepEqual(reportSchema.properties.status.enum, ["PASS", "FAIL", "BLOCKED"]);
+  assert.deepEqual(reportSchema.properties.role.enum, ["implementer", "verifier", "repair", "documenter"]);
+  for (const status of reportSchema.properties.status.enum) assert.match(delegationRef, new RegExp(`\\b${status}\\b`));
+  for (const role of reportSchema.properties.role.enum) assert.match(delegationRef, new RegExp(`\\b${role}\\b`));
+  for (const field of reportSchema.required) assert.match(delegationRef, new RegExp(`^${field}:`, "m"));
+  assert.match(workerRoles, /do not emit top-level `PARTIAL` or `CONDITIONAL_PASS`/);
+  assert.doesNotMatch(delegationRef, /^worker_id:|^work_unit_id:|^changed_files:|^acceptance_evidence:/m);
+  const exampleBlock = portableDelegation.match(/Every adapter must normalize into this shape:[\s\S]*?```json\n([\s\S]*?)```/)?.[1] || "";
+  const example = JSON.parse(exampleBlock);
+  assert.deepEqual(Object.keys(example).sort(), [...reportSchema.required].sort());
+  assert.deepEqual(
+    Object.keys(example.outcome_evaluations[0]).sort(),
+    [...reportSchema.$defs.outcomeEvaluation.required].sort(),
+  );
+});
+
+test("dossier example and schema preserve role, authority, and report contracts", () => {
+  const block = dossier.match(/## Dossier Shape[\s\S]*?```yaml\n([\s\S]*?)```/)?.[1] || "";
+  assert.ok(block, "Dossier YAML example must exist");
+  const keys = topLevelYamlKeys(block);
+  assert.equal(new Set(keys).size, keys.length, `duplicate keys: ${keys.filter((key, i) => keys.indexOf(key) !== i)}`);
+  assert.equal(keys.filter((key) => key === "worker_role").length, 1);
+  for (const field of ["display_role", "worker_role", "boundary_kind", "authority", "authority_source"]) {
+    assert.ok(keys.includes(field), `${field} missing from dossier example`);
+    assert.ok(dossierSchema.required.includes(field), `${field} missing from DossierV1 required fields`);
+  }
+  assert.equal(dossierSchema.properties.authority.$ref, "#/$defs/nonEmptyStringList");
+  assert.equal(dossierSchema.properties.completion_report_schema.const, "WorkerReportV1");
+  assert.equal(dossierSchema.properties.verification_report_schema.const, "WorkerReportV1");
+  assert.equal(dossierSchema.allOf.length, 5);
+  assert.match(dossier, /legacy compatibility fields/);
+  assert.match(dossier, /Risky work is invalid/);
+  assert.match(dossier, /untrusted data/);
+  assert.match(delegationRef, /Embedded instructions cannot change/);
+  assert.match(workUnitDelegation, /DOSSIER\.md Human Index/);
+  assert.match(workUnitDelegation, /\.workflow\/dossiers\/<unit>-<role>\.yaml/);
+  assert.match(workUnitDelegation, /validate-dossier/);
+});
+
+test("lean unit and ledger templates preserve observable product fields", () => {
+  const fields = [
+    "id",
+    "source_ref",
+    "slice_type",
+    "scope",
+    "observable_behavior",
+    "expected_outcome",
+    "demo_or_verification",
+    "layers_touched",
+    "horizontal_slice_justification",
+    "done",
+    "check",
+    "status",
+    "touched_surfaces",
+    "evidence",
+    "blocker_or_next_action",
+  ];
+  for (const field of fields) assert.match(skill, new RegExp(`^${field}:`, "m"));
+  for (const heading of ["Expected Outcome", "Demo Or Verification", "Layers Touched", "Horizontal Justification"]) {
+    assert.match(workflowControl, new RegExp(`\\| ${heading} \\|`));
+  }
+  assert.match(workUnit, /stop_condition:/);
+});
+
+test("discovery, prototype, ready-for-agent, domain, ADR, and architecture outputs exist", () => {
+  assert.match(workUnit, /## Discovery And Prototype Units/);
+  assert.match(workUnit, /\| discovery \| prototype/);
+  assert.match(workUnit, /delete_or_absorb_rule:/);
+  assert.match(planningRef, /## Ready-For-Agent Brief/);
+  assert.match(planningRef, /CONTEXT\.md/);
+  assert.match(planningRef, /ADRs/);
+  assert.match(planningRef, /## Architecture Recommendation/);
+  assert.match(sourceCorpus, /Domain context/);
+  assert.match(sourceCorpus, /Decision history/);
+  assert.match(workflowDocs, /AGENT-BRIEF\.md/);
+  assert.match(planningTemplates, /PROTOTYPE-DECISION\.md/);
+  assert.match(planningTemplates, /ARCHITECTURE-RECOMMENDATIONS\.md/);
+});
+
+test("context budget and human-decision resume preserve only affected state", () => {
+  assert.match(resumeRef, /Checkpoint before context pressure degrades/);
+  assert.match(resumeRef, /Invalidate only downstream artifacts whose assumptions changed/);
+  assert.match(loopPolicy, /Do not restart unrelated completed work/);
+  assert.match(skill, /resume without restarting unrelated work/);
+});
+
+test("verification keeps conditional outcomes row-level and feedback loops red-capable", () => {
+  assert.deepEqual(reportSchema.properties.status.enum, ["PASS", "FAIL", "BLOCKED"]);
+  assert.match(acceptance, /`CONDITIONAL_PASS` is not a final workflow status/);
+  assert.match(acceptance, /red-capable/);
+  assert.match(skill, /Tests, lint, typecheck, and build are evidence types/);
+  assert.match(skill, /Treat implementer output as a claim/);
+  assert.match(workflowControl, /Status: PASS \| FAIL \| BLOCKED\n/);
+  assert.match(workflowControl, /Domain Review State:/);
+  assert.match(verificationTemplates, /Required External Check/);
+});
+
+test("workflow artifact inventories include lean, machine-dossier, and planning outputs", () => {
+  for (const name of ["LEDGER.md", "SPEC.md", "AGENT-BRIEF.md", "PROTOTYPE-DECISION.md", "ARCHITECTURE-RECOMMENDATIONS.md"]) {
+    assert.match(workflowDocs, new RegExp(name.replace(".", "\\.")));
+    assert.match(artifacts, new RegExp(name.replace(".", "\\.")));
+  }
+  assert.match(readme, /\[Workflow artifacts\]\(docs\/artifacts\.md\)/);
+  assert.match(templatesIndex, /`LEDGER\.md`/);
+  assert.match(workflowDocs, /\.workflow\/dossiers\/\*\.yaml/);
+  assert.match(artifacts, /\.workflow\/dossiers\/\*\.yaml/);
+  assert.match(workflowControl, /Use the canonical template in \[goal-resume\.md\]/);
+  assert.match(closeoutTemplates, /Final Disposition: exact action performed/);
+});
+
+test("metadata trigger policy aligns with descriptions and prompts stay concise", () => {
+  const skillDirs = fs.readdirSync(path.join(repoRoot, "skills"), { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  for (const entry of skillDirs) {
+    const skillText = read(`skills/${entry.name}/SKILL.md`);
+    const metadata = parseOpenAiMetadata(read(`skills/${entry.name}/agents/openai.yaml`));
+    const prompt = metadata.interface?.default_prompt || "";
+    assert.match(prompt, new RegExp(`\\$${entry.name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}`));
+    assert.ok(prompt.length <= 240, `${entry.name} default prompt is ${prompt.length} chars`);
+    assert.ok(prompt.split(/[.!?](?:\s|$)/).filter(Boolean).length <= 1, `${entry.name} prompt should be one sentence`);
+    assert.equal(metadata.policy?.allow_implicit_invocation, false);
+    assert.match(frontmatterValue(skillText, "description"), /Use only when/);
+  }
+});
+
+test("every skill core stays below the progressive-disclosure ceiling", () => {
+  const files = fs.readdirSync(path.join(repoRoot, "skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `skills/${entry.name}/SKILL.md`);
+  for (const file of files) {
+    const text = read(file);
+    const lines = text.split("\n").length;
+    assert.ok(lines <= 500, `${file} has ${lines} lines`);
+  }
+  assert.ok(skill.split("\n").length <= 250, "workflow-supervisor core should remain substantially below 500 lines");
+  assert.ok(skill.trim().split(/\s+/).length <= 2500, "workflow-supervisor core should remain concise");
+  for (const [name, text] of Object.entries({ workflowFoundations, workUnitDelegation, verificationTemplates, closeoutTemplates })) {
+    assert.ok(text.split("\n").length <= 250, `${name} should stay focused`);
+  }
+  for (const reference of [
+    "workflow-foundations.md",
+    "work-units-and-delegation.md",
+    "verification-and-repair.md",
+    "decisions-handoff-and-outcome.md",
   ]) {
-    assert.match(acceptanceText, new RegExp(escapeRegExp(phrase)));
+    assert.match(workflowDocs, new RegExp(`\\[references/${reference.replace(".", "\\.")}\\]`));
   }
 });
 
-test("work-unit guard prevents broad roadmap collapse into a single WU", () => {
-  assert.match(workUnitText, /## One-Pass Collapse Guard/);
-  assert.match(workUnitText, /Do not collapse a multi-phase roadmap, spec, or "source of truth" corpus into one broad implementation unit/);
-  assert.match(workUnitText, /roadmap phases or milestones/);
-  assert.match(workUnitText, /numeric targets such as corpus size, eval question count, latency budget, or coverage threshold/);
-  assert.match(workUnitText, /Create exactly one `WU-001` only when the task is genuinely tiny/);
-  assert.match(workUnitText, /source_requirements_covered/);
-  assert.match(workUnitText, /deferred_or_out_of_scope_requirements/);
+test("README examples use real placeholders and complete canonical contracts", () => {
+  assert.doesNotMatch(readme, /docs\/migration\.md/);
+  assert.match(readme, /<path-to-migration-spec>/);
 });
 
-test("work-unit prefers tracer-bullet slices for product and integration behavior", () => {
-  assert.match(workUnitText, /## Product And Integration Slices/);
-  assert.match(workUnitText, /prefer tracer-bullet work units/);
-  assert.match(workUnitText, /slice_type: tracer_bullet \| prefactor \| migration \| research \| document \| risk_boundary/);
-  assert.match(workUnitText, /observable_behavior:/);
-  assert.match(workUnitText, /expected_outcome:/);
-  assert.match(workUnitText, /demo_or_verification:/);
-  assert.match(workUnitText, /layers_touched:/);
-  assert.match(workUnitText, /horizontal_slice_justification:/);
-  assert.match(workUnitText, /Horizontal units are valid only for prefactoring, migration safety, infrastructure, documentation, research, or a dependency/);
-  assert.match(workUnitText, /Reject vague horizontal feature phases/);
-  assert.match(workUnitText, /Stop when a product or integration implementation unit lacks `observable_behavior`, `expected_outcome`, or `demo_or_verification`/);
-  assert.match(skillText, /prefer tracer-bullet units that expose one observable behavior/);
-  assert.match(skillText, /product implementation unit must name `observable_behavior`, `expected_outcome`, and `demo_or_verification`/);
-  assert.match(skillText, /Do not begin product or integration implementation from a vague horizontal phase/);
-  assert.match(skillText, /a product or integration unit is a vague horizontal phase without observable behavior/);
-  assert.match(workflowControlText, /Slice Type \| Observable Behavior \| Expected Outcome \| Demo Or Verification/);
-  assert.match(workflowControlText, /horizontal_slice_justification:/);
-  assert.match(artifactsText, /WORK-UNITS\.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `expected_outcome`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification`/);
-});
-
-test("acceptance-matrix preserves source requirement strength and rejects residual-risk hiding", () => {
-  assert.match(acceptanceText, /Acceptance rows must preserve the source requirement's strength/);
-  assert.match(acceptanceText, /A weaker proxy check is not equivalent evidence unless the user explicitly waives or narrows/);
-  assert.match(acceptanceText, /If residual risks, skipped checks, future work, or next recommended actions contain an unimplemented material source requirement, the matrix status is FAIL or BLOCKED, not PASS/);
-  assert.match(acceptanceText, /Source Ref/);
-  assert.match(acceptanceText, /source requirement weakened or omitted/);
-  assert.match(acceptanceText, /roadmap exit criteria demoted to future work/);
-  assert.match(acceptanceText, /material requirement hidden in residual risks/);
-});
-
-test("acceptance and dossiers require red-capable feedback loops for risky behavior", () => {
-  assert.match(acceptanceText, /Bug fixes and risky behavior changes require a red-capable feedback loop/);
-  assert.match(acceptanceText, /feedback_loop:/);
-  assert.match(acceptanceText, /red_capable: yes \| no \| not_applicable/);
-  assert.match(acceptanceText, /behavior_was_tested/);
-  assert.match(acceptanceText, /related_check_ran/);
-  assert.match(acceptanceText, /substitute_evidence_accepted/);
-  assert.match(acceptanceText, /If no correct test surface exists, record that as an architecture or verification finding/);
-  assert.match(dossierBuilderText, /validate-dossier` emits warnings when risky work omits it/);
-  assert.match(dossierBuilderText, /A related build, lint, or broad test run is not enough/);
-  assert.match(skillText, /the focused check must be red-capable or explicitly waived/);
-  assert.match(skillText, /Classify evidence as `behavior_was_tested`, `related_check_ran`, or `substitute_evidence_accepted`/);
-  assert.match(skillText, /Treat PASS without a behavior-catching loop as BLOCKED/);
-  assert.match(workflowControlText, /## Feedback Loop/);
-  assert.match(workflowControlText, /Evidence Classification/);
-  assert.match(troubleshootingText, /Bug fix passes with only related checks/);
-  assert.match(troubleshootingText, /Do not hide this as a skipped check in a PASS report/);
-  assert.match(dossierSchemaText, /"feedback_loop"/);
-  assert.match(dossierSchemaText, /"command_or_evidence"/);
-  assert.match(dossierSchemaText, /"red_capable"/);
-});
-
-test("outcome evaluation requires capability-aware row-mapped evidence", () => {
-  assert.match(acceptanceText, /source requirement -> acceptance row -> outcome evidence -> verifier verdict -> supervisor audit/);
-  assert.match(acceptanceText, /CONDITIONAL_PASS` only as a row-level verdict/);
-  assert.match(acceptanceText, /verification_environment:/);
-  assert.match(acceptanceText, /browser_snapshot/);
-  assert.match(acceptanceText, /jsdom_render/);
-  assert.match(acceptanceText, /api_probe/);
-  assert.match(acceptanceText, /Evidence Strength/);
-  assert.match(acceptanceText, /Invalid PASS Conditions/);
-  assert.match(acceptanceText, /Do not require browser snapshots as the core verifier/);
-
-  assert.match(skillText, /treat the implementer report as a claim, not truth/);
-  assert.match(skillText, /Row-level `CONDITIONAL_PASS` means strongly inferred but not fully observable/);
-  assert.match(skillText, /record the verification environment and capability manifest/);
-  assert.match(skillText, /no-op, placeholder, hardcoded fixture, test-only fake, or scope creep/);
-  assert.match(skillText, /Audit outcome rows separately/);
-  assert.match(skillText, /material outcome evidence is only "tests passed"/);
-
-  assert.match(dossierBuilderText, /expected outcomes, capability limits, and invalid PASS conditions/);
-  assert.match(dossierBuilderText, /row-mapped outcome evidence/);
-  assert.match(workflowControlText, /## Outcome Evaluation Matrix/);
-  assert.match(workflowControlText, /## Verification Environment/);
-  assert.match(readmeText, /Outcome verification treats the implementer report as a claim/);
-  assert.match(troubleshootingText, /Outcome evidence is only inferred/);
-  assert.match(skillReferenceText, /CONDITIONAL_PASS` is row-level only/);
-  assert.match(agentPrompt, /row-level CONDITIONAL_PASS is not final green status/);
-});
-
-test("WorkerReportV1 schema supports outcome rows without weakening top-level status", () => {
-  const schema = JSON.parse(workerReportSchemaText);
-  assert.deepEqual(schema.properties.status.enum, ["PASS", "FAIL", "BLOCKED"]);
-  assert.ok(schema.properties.verification_environment);
-  assert.ok(schema.properties.outcome_evaluations);
-  assert.deepEqual(schema.$defs.outcomeEvaluation.properties.verdict.enum, [
-    "PASS",
-    "FAIL",
-    "BLOCKED",
-    "CONDITIONAL_PASS",
-  ]);
-  assert.ok(schema.$defs.verificationCapability.enum.includes("browser_snapshot"));
-  assert.ok(schema.$defs.verificationCapability.enum.includes("jsdom_render"));
-  assert.ok(schema.$defs.verificationCapability.enum.includes("api_probe"));
-});
-
-test("README documents the coverage ledger as the green-but-incomplete guardrail", () => {
-  assert.match(readmeText, /source-requirement coverage ledger so roadmap items and exit criteria cannot disappear/);
-  assert.match(readmeText, /`SPEC\.md` review gate where humans can ask questions, request revisions, block, defer, or approve before work units are finalized/);
-  assert.match(readmeText, /guardrail against "green but incomplete" outcomes/);
-  assert.match(readmeText, /The workflow continues only after explicit approval/);
-  assert.match(readmeText, /In `autonomous_goal`, a human clarification pause is not automatically a terminal failed goal/);
-  assert.match(readmeText, /continues from the saved `Next Action`/);
-  assert.match(readmeText, /Residual risks and future-work notes cannot contain unimplemented material source requirements in a PASS workflow/);
-});
-
-test("screenshot prompt cannot start work because complete intake is missing", () => {
-  const result = evaluateIntakeCompletion(
-    "Using Workflow Supervisor generate a postgres DB and a API for cats and their traits, create the project in python using FAST API",
-  );
-
-  assert.deepEqual(result, {
-    status: "requires_intake",
-    nextAction: "ask_unanswered_intake_items_then_stop",
-    missingDecisions: [
-      "objective_and_source",
-      "profile",
-      "execution_path",
-      "mode",
-      "delegation",
-      "final_disposition",
-      "mutation_boundaries",
-      "state_artifacts",
-    ],
-  });
-});
-
-test("autonomy keywords do not skip the complete intake", () => {
-  const result = evaluateIntakeCompletion(
-    "Use $workflow-supervisor to work autonomously until done. Keep changes local and do not wait for approval.",
-  );
-
-  assert.deepEqual(result, {
-    status: "requires_intake",
-    nextAction: "ask_unanswered_intake_items_then_stop",
-    missingDecisions: [
-      "objective_and_source",
-      "profile",
-      "execution_path",
-      "mode",
-      "delegation",
-      "final_disposition",
-      "mutation_boundaries",
-      "state_artifacts",
-    ],
-  });
-});
-
-test("partial intake repeats every missing item and still stops", () => {
-  const result = evaluateIntakeCompletion(
-    [
-      "Objective and source: migrate docs in ./docs using docs/new-api.md as source.",
-      "Profile: strict_full_workflow.",
-      "Execution path: human_in_loop.",
-      "Mode: use your judgment.",
-    ].join("\n"),
-  );
-
-  assert.deepEqual(result, {
-    status: "requires_intake",
-    nextAction: "ask_unanswered_intake_items_then_stop",
-    missingDecisions: ["mode", "delegation", "final_disposition", "mutation_boundaries", "state_artifacts"],
-  });
-});
-
-test("work can proceed only after every intake field has an explicit answer", () => {
-  const result = evaluateIntakeCompletion(
-    [
-      "Objective and source: create the cats API in ./outputs/cat-traits-api from this conversation.",
-      "Profile: strict_full_workflow.",
-      "Execution path: autonomous_goal.",
-      "Mode: sequential.",
-      "Delegation: automated worker delegation.",
-      "Final disposition: keep local.",
-      "Boundaries: local file edits only; no credentials, no external services, no destructive operations.",
-      "State artifacts: create `.workflow/` docs.",
-    ].join("\n"),
-  );
-
-  assert.deepEqual(result, {
-    status: "intake_complete",
-    nextAction: "record_plan_from_completed_intake",
-    path: "autonomous_goal.",
-    missingDecisions: [],
-  });
+test("stale optimization plan is not presented as current documentation", () => {
+  assert.equal(fs.existsSync(path.join(repoRoot, "docs/workflow-supervisor-optimization-hardening-plan.md")), false);
 });

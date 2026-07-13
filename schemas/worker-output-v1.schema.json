@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-supervisor.local/schemas/worker-output-v1.schema.json",
+  "title": "WorkerReportV1 Worker Output",
+  "description": "Raw worker-emitted WorkerReportV1. The trusted wrapper owns and replaces adapter, guard, stdout_excerpt, and stderr_excerpt.",
+  "allOf": [
+    { "$ref": "worker-report-v1.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "adapter": { "type": "null" },
+        "guard": { "type": "null" },
+        "stdout_excerpt": { "type": "null" },
+        "stderr_excerpt": { "type": "null" }
+      }
+    }
+  ]
+}

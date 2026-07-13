@@ -1,6 +1,6 @@
 ---
 name: acceptance-matrix
-description: Convert requirements into formal, evidence-mapped acceptance criteria only for supervised, high-risk, ambiguous, resumable, or delegated workflows. Use when verification must map each requirement to evidence, adversarial cases, PASS/FAIL/BLOCKED states, review states, and residual risk. Do not use for ordinary code review, small scoped edits, routine test runs, trivial explicit acceptance, or declaring completion unless the user asks for an acceptance matrix or evidence-mapped verification.
+description: Convert requirements into formal evidence-mapped acceptance criteria for supervised, high-risk, ambiguous, resumable, or delegated work. Use only when the user explicitly invokes $acceptance-matrix or an active workflow-supervisor needs row-level evidence, adversarial cases, PASS/FAIL/BLOCKED mapping, review state, or residual-risk control. Do not use for routine tests, ordinary review, small scoped edits, or trivial acceptance.
 ---
 
 # Acceptance Matrix
@@ -16,10 +16,10 @@ This skill owns evidence rows and supervisor verdict mapping. `$work-unit` may d
 - Every requirement needs evidence.
 - Evidence must name a source, command, artifact, UI state, test, inspection, or user decision.
 - Acceptance rows must preserve the source requirement's strength: named systems, quantities, live/integration wording, exit criteria, and "must" language.
-- A weaker proxy check is not equivalent evidence unless the user explicitly waives or narrows the original requirement.
-- PASS requires all material rows to be satisfied or explicitly waived by the user.
+- A weaker proxy check is not equivalent evidence unless the user or a controlling source with demonstrated waiver authority explicitly waives or narrows the original requirement.
+- PASS requires all material rows to be satisfied or explicitly waived by the user or a controlling source with demonstrated waiver authority.
 - FAIL requires at least one material row with unmet evidence.
-- BLOCKED applies when evidence cannot be obtained or sources conflict.
+- BLOCKED applies when required evidence cannot be obtained or material sources conflict.
 - Residual risks must not be hidden inside PASS.
 - If residual risks, skipped checks, future work, or next recommended actions contain an unimplemented material source requirement, the matrix status is FAIL or BLOCKED, not PASS.
 - Bug fixes and risky behavior changes require a red-capable feedback loop, or an explicit waiver explaining why no correct loop exists.
@@ -46,7 +46,7 @@ Do not downgrade requirements while making them testable. Examples of invalid su
 - required analysis and report generation -> keyword metadata only
 - provider-backed extraction or indexing -> deterministic placeholder logic
 
-If a requirement cannot be verified in the current environment, mark it BLOCKED or require a user waiver. Do not convert it into an easier row.
+If a requirement cannot be verified in the current environment, mark it BLOCKED or require an explicit waiver from the user or a controlling source with demonstrated waiver authority. Do not convert it into an easier row.
 
 ## Row Shape
 
@@ -69,6 +69,7 @@ outcome_evaluation:
     - api_probe
     - static_diff_inspection
   available_verification:
+    - jsdom_render
     - integration_test
     - api_probe
     - static_diff_inspection
@@ -91,12 +92,13 @@ outcome_evaluation:
   evidence:
     - exact command, artifact, file, trace, UI state, or inspection result
   limitation:
+  capability_limitations: []
   required_external_check:
     - manual browser review
   finding:
 ```
 
-`CONDITIONAL_PASS` is not a final workflow status. It means the behavior is strongly inferred through the strongest available substitute evidence, while a stronger material capability remains unavailable. If that unavailable capability is required to prove the source requirement, the supervisor must mark the material row or workflow BLOCKED unless the user explicitly accepts a waiver or narrower scope.
+`CONDITIONAL_PASS` is not a final workflow status. It means the behavior is strongly inferred through the strongest available substitute evidence, while a stronger material capability remains unavailable. If that unavailable capability is required to prove the source requirement, the supervisor must mark the material row or workflow BLOCKED unless the user or a controlling source with demonstrated waiver authority explicitly accepts a waiver or narrower scope.
 
 ## Capability Manifest
 
@@ -137,11 +139,11 @@ For bug fixes and risky behavior changes, each material acceptance row must name
 ```yaml
 feedback_loop:
   command_or_evidence:
-  red_capable: yes | no | not_applicable
+  red_capable: "<yes|no|not_applicable>"
   exact_symptom_or_behavior:
-  deterministic: yes | no
+  deterministic: "<yes|no>"
   expected_runtime:
-  agent_runnable: yes | no
+  agent_runnable: "<yes|no>"
 ```
 
 `red_capable: yes` means the loop would have failed, or visibly shown the wrong behavior, before the fix. A related check is not red-capable unless it catches the exact symptom or behavior under review.
@@ -150,7 +152,7 @@ Classify every row's evidence as one of:
 
 - `behavior_was_tested`: a red-capable command, test, UI state, artifact check, or reviewer action exercised the exact behavior.
 - `related_check_ran`: a nearby test, build, lint, static check, or inspection ran but does not catch the exact behavior by itself.
-- `substitute_evidence_accepted`: the correct loop is unavailable and the user or governing source accepted substitute evidence.
+- `substitute_evidence_accepted`: the correct loop is unavailable and the user or a controlling source with demonstrated waiver authority accepted substitute evidence.
 
 For bug fixes and risky behavior changes, PASS requires `behavior_was_tested` or `substitute_evidence_accepted` with waiver evidence. If no correct test surface exists, record that as an architecture or verification finding. Do not turn it into a quiet skipped check.
 
@@ -176,7 +178,9 @@ Consider:
 - material requirement hidden in residual risks
 - artifact cannot be reused by a fresh agent or human
 
-## Verification Report Shape
+## Human Verification Artifact Shape
+
+This is a durable supervisor-facing `.workflow/VERIFICATION-REPORT.md` projection, not a worker wire format. A delegated verifier must emit the exact canonical `WorkerReportV1`; the supervisor may project its evidence into this human-readable artifact without dropping the canonical report.
 
 ```yaml
 status: PASS|FAIL|BLOCKED
@@ -194,10 +198,16 @@ outcome_evaluations:
   - id:
     source_requirement:
     expected_outcome:
+    preferred_verification:
+    available_verification:
+    invalid_pass_conditions:
     verdict:
     evidence_strength:
     evidence:
     limitation:
+    capability_limitations:
+    required_external_check:
+    finding:
 findings:
 residual_risks:
 skipped_checks:

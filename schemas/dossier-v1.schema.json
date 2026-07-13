@@ -3,14 +3,18 @@
   "$id": "https://workflow-supervisor.local/schemas/dossier-v1.schema.json",
   "title": "DossierV1",
   "type": "object",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "required": [
     "schema",
     "workflow",
     "work_unit",
     "dossier_id",
     "worker_name",
+    "display_role",
     "worker_role",
+    "boundary_kind",
+    "authority",
+    "authority_source",
     "delegation_transport",
     "start_condition",
     "title",
@@ -38,23 +42,49 @@
     },
     "workflow": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "work_unit": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "dossier_id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "worker_name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "display_role": {
+      "type": "string",
+      "enum": [
+        "implementer",
+        "executor",
+        "producer",
+        "editor",
+        "verifier",
+        "reviewer",
+        "subject_matter_reviewer",
+        "researcher",
+        "repair",
+        "repair_ticket_author",
+        "documenter",
+        "synthesizer",
+        "approver"
+      ]
     },
     "worker_role": {
       "type": "string",
       "enum": ["implementer", "verifier", "repair", "documenter"]
+    },
+    "boundary_kind": {
+      "type": "string",
+      "enum": ["local_path", "artifact"]
     },
     "delegation_transport": {
       "type": "string",
@@ -62,27 +92,31 @@
     },
     "start_condition": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "title": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "objective": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "worker_prompt": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "completion_report_schema": {
       "type": "string",
-      "minLength": 1
+      "const": "WorkerReportV1"
     },
     "verification_report_schema": {
       "type": "string",
-      "minLength": 1
+      "const": "WorkerReportV1"
     },
     "non_goals": {
       "$ref": "#/$defs/stringList"
@@ -96,6 +130,12 @@
     "allowed_surfaces": {
       "$ref": "#/$defs/stringList"
     },
+    "authority": {
+      "$ref": "#/$defs/nonEmptyStringList"
+    },
+    "authority_source": {
+      "$ref": "#/$defs/nonEmptyStringList"
+    },
     "forbidden_surfaces": {
       "$ref": "#/$defs/stringList"
     },
@@ -103,6 +143,29 @@
       "$ref": "#/$defs/stringList"
     },
     "work_points": {
+      "$ref": "#/$defs/stringList"
+    },
+    "audience": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "reader_task": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "document_type": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "publication_target": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "reviewers": {
       "$ref": "#/$defs/stringList"
     },
     "acceptance_matrix": {
@@ -124,11 +187,12 @@
         "expected_runtime",
         "agent_runnable"
       ],
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "command_or_evidence": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "red_capable": {
           "type": "string",
@@ -136,7 +200,8 @@
         },
         "exact_symptom_or_behavior": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "deterministic": {
           "type": "string",
@@ -144,12 +209,23 @@
         },
         "expected_runtime": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "agent_runnable": {
           "type": "string",
           "enum": ["yes", "no"]
         }
+      }
+    },
+    "feedback_loop_waiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "substitute_evidence", "approved_by_or_source"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "substitute_evidence": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "approved_by_or_source": { "type": "string", "minLength": 1, "pattern": "\\S" }
       }
     },
     "supervisor_checkpoints": {
@@ -166,12 +242,52 @@
     }
   },
   "$defs": {
-    "stringList": {
+    "nonEmptyStringList": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "pattern": "\\S"
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
       }
     }
-  }
+  },
+  "not": {
+    "properties": {
+      "feedback_loop": {},
+      "feedback_loop_waiver": {}
+    },
+    "required": ["feedback_loop", "feedback_loop_waiver"]
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "delegation_transport": { "const": "portable_delegate" } } },
+      "then": { "properties": { "boundary_kind": { "const": "local_path" } } }
+    },
+    {
+      "if": { "properties": { "display_role": { "enum": ["implementer", "executor", "producer", "editor"] } } },
+      "then": { "properties": { "worker_role": { "const": "implementer" } } }
+    },
+    {
+      "if": { "properties": { "display_role": { "enum": ["verifier", "reviewer", "subject_matter_reviewer", "researcher", "approver"] } } },
+      "then": { "properties": { "worker_role": { "const": "verifier" } } }
+    },
+    {
+      "if": { "properties": { "display_role": { "const": "repair" } } },
+      "then": { "properties": { "worker_role": { "const": "repair" } } }
+    },
+    {
+      "if": { "properties": { "display_role": { "enum": ["repair_ticket_author", "documenter", "synthesizer"] } } },
+      "then": { "properties": { "worker_role": { "const": "documenter" } } }
+    }
+  ]
 }

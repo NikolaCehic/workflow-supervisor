@@ -1,7 +1,7 @@
 interface:
   display_name: "Workflow Docs"
   short_description: "Preserve workflow and worker state"
-  default_prompt: "Use $workflow-docs to create or refresh .workflow/ artifacts that preserve workflow, worker delegation, verification, and outcome state."
+  default_prompt: "Use $workflow-docs to preserve this workflow in the smallest durable medium the next human or agent can use."
 
 policy:
   allow_implicit_invocation: false

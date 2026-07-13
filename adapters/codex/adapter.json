@@ -6,9 +6,17 @@
   "metadata": "agents/openai.yaml",
   "invocation": "Use $workflow-supervisor ...",
   "delegate": {
-    "command": ["codex", "exec", "--json", "--skip-git-repo-check", "-c", "service_tier=\"fast\""],
-    "promptMode": "arg",
+    "command": ["codex", "exec", "--json", "--ephemeral", "--skip-git-repo-check"],
+    "versionArgs": ["--version"],
+    "promptMode": "stdin",
+    "stdinArg": "-",
     "schemaMode": "file",
-    "schemaFlag": "--output-schema"
+    "schemaFlag": "--output-schema",
+    "roleArgs": {
+      "implementer": ["--sandbox", "workspace-write"],
+      "verifier": ["--sandbox", "read-only"],
+      "repair": ["--sandbox", "workspace-write"],
+      "documenter": ["--sandbox", "workspace-write"]
+    }
   }
 }

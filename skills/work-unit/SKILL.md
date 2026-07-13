@@ -1,6 +1,6 @@
 ---
 name: work-unit
-description: Decompose fuzzy or broad objectives into bounded, sequenced, verifiable work units. Use when a task is too large, ambiguous, multi-phase, dependency-heavy, or risky to execute as one edit; when a supervisor needs packets, milestones, slices, tickets, or agent delegation; or when scope must be narrowed before implementation. Do not use for already-small tasks with clear files and acceptance.
+description: Decompose fuzzy or broad objectives into bounded, sequenced, verifiable work units. Use only when the user explicitly invokes $work-unit or an active workflow-supervisor needs packets, milestones, tracer-bullet slices, discovery/prototype units, tickets, or agent delegation for work that is too large, ambiguous, multi-phase, dependency-heavy, or risky to execute as one edit. Do not use for already-small tasks with clear scope and acceptance.
 ---
 
 # Work Unit
@@ -24,11 +24,13 @@ Horizontal units are valid only for prefactoring, migration safety, infrastructu
 - `research`
 - `document`
 - `risk_boundary`
+- `discovery`
+- `prototype`
 
 Every product or integration implementation unit must name:
 
 ```yaml
-slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary
+slice_type: tracer_bullet | prefactor | migration | research | document | risk_boundary | discovery | prototype
 observable_behavior:
 expected_outcome:
 demo_or_verification:
@@ -39,6 +41,22 @@ horizontal_slice_justification:
 For `tracer_bullet`, `observable_behavior`, `expected_outcome`, and `demo_or_verification` are required and `layers_touched` should name the smallest layers needed for that behavior. For horizontal or non-product slice types, set `observable_behavior` and `expected_outcome` to `not_applicable` only when the unit names a concrete `horizontal_slice_justification`.
 
 Reject vague horizontal feature phases such as "backend foundation", "frontend pass", "data model work", or "integration prep" unless the unit has a valid non-product `slice_type`, a concrete dependency it unlocks, and a verification method for that slice.
+
+## Discovery And Prototype Units
+
+Use a discovery or prototype unit only when runnable evidence is needed before production scope can be selected. Include:
+
+```yaml
+question:
+prototype_kind: logic | ui | integration | performance | other
+command_or_observation:
+expected_observation:
+production_surfaces_forbidden:
+decision_record_target:
+delete_or_absorb_rule:
+```
+
+Prototype output informs a decision, SPEC, or production unit. It is not final production evidence until absorbed into verified behavior or explicitly accepted as the requested deliverable.
 
 ## Unit Quality Bar
 
@@ -118,6 +136,12 @@ units:
     source_requirements_covered:
     verification:
     sequence:
+    stop_condition:
+    question:
+    prototype_kind:
+    production_surfaces_forbidden:
+    decision_record_target:
+    delete_or_absorb_rule:
 parallel_groups:
 blocked_units:
 deferred_or_out_of_scope_requirements:
