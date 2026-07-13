@@ -94,6 +94,7 @@ Native host delegation does not automatically produce the CLI's `WorkerReportV1`
 The CLI avoids shell interpolation and normalizes contract write paths for portable safety.
 
 - POSIX process cleanup uses a new process group. A descendant that creates another session or joins another group can escape that cleanup boundary.
+- On Windows, native `.exe`/`.com` commands run directly. Standard npm `.cmd` shims are reduced to a native target or an exact Node-shebang target; unrecognized `.cmd` and all `.bat` commands fail closed.
 - Windows cleanup uses `taskkill /T /F`. Process ancestry cannot prove cleanup of a descendant that detached before enumeration.
 - Filesystem case sensitivity, permissions, symlink privileges, and CLI installation paths differ by environment.
 

@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runProcessTree } from "../lib/process-tree.mjs";
+import { prepareProcessInvocation, runProcessTree } from "../lib/process-tree.mjs";
 
 const fixture = fileURLToPath(new URL("./fixtures/process-tree-worker.mjs", import.meta.url));
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -21,6 +21,100 @@ function runFixture(mode, options = {}) {
     ...rest,
   });
 }
+
+test("Windows npm command shims resolve without shell interpolation", (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "workflow-command-shim-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const target = path.join(directory, "node_modules", "fixture", "cli.js");
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, "#!/usr/bin/env node\n");
+  const shim = path.join(directory, "fixture.CMD");
+  fs.writeFileSync(shim, '@ECHO off\r\n"%~dp0\\node_modules\\fixture\\cli.js" %*\r\n');
+  const forwarded = ["--json-schema", '{"type":"object","literal":"&|%"}'];
+
+  const invocation = prepareProcessInvocation({
+    command: "fixture",
+    args: forwarded,
+    cwd: directory,
+    env: { PATH: directory, PATHEXT: ".EXE;.CMD" },
+    platform: "win32",
+  });
+  assert.equal(invocation.command, process.execPath);
+  assert.deepEqual(invocation.args, [target, ...forwarded]);
+
+  const nativeTarget = path.join(directory, "node_modules", "fixture", "native.exe");
+  fs.writeFileSync(nativeTarget, "native fixture placeholder");
+  const nativeShim = path.join(directory, "native.CMD");
+  fs.writeFileSync(nativeShim, '@ECHO off\r\n"%dp0%\\node_modules\\fixture\\native.exe" %*\r\n');
+  const nativeInvocation = prepareProcessInvocation({
+    command: "native",
+    args: forwarded,
+    cwd: directory,
+    env: { PATH: directory, PATHEXT: ".EXE;.CMD" },
+    platform: "win32",
+  });
+  assert.equal(nativeInvocation.command, nativeTarget);
+  assert.deepEqual(nativeInvocation.args, forwarded);
+
+  const unknown = path.join(directory, "unknown.CMD");
+  fs.writeFileSync(unknown, "@ECHO off\r\necho unsafe\r\n");
+  assert.throws(
+    () => prepareProcessInvocation({
+      command: unknown,
+      args: [],
+      cwd: directory,
+      env: { PATH: directory, PATHEXT: ".CMD" },
+      platform: "win32",
+    }),
+    (error) => error?.code === "EUNSUPPORTEDCMD" && /only standard npm \.cmd shims/.test(error.message),
+  );
+});
+
+test("runProcessTree executes a standard npm command shim on Windows", {
+  skip: process.platform !== "win32" ? "Windows command shim regression" : false,
+}, async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "workflow-command-shim-runtime-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const target = path.join(directory, "node_modules", "fixture", "cli.js");
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, [
+    "#!/usr/bin/env node",
+    "let input = '';",
+    "process.stdin.setEncoding('utf8');",
+    "process.stdin.on('data', (chunk) => { input += chunk; });",
+    "process.stdin.on('end', () => process.stdout.write(JSON.stringify({ args: process.argv.slice(2), input })));",
+    "",
+  ].join("\n"));
+  const shim = path.join(directory, "fixture.cmd");
+  fs.writeFileSync(shim, '@ECHO off\r\n"%~dp0\\node_modules\\fixture\\cli.js" %*\r\n');
+  const args = ["--json-schema", '{"literal":"&|%"}'];
+  const result = await runProcessTree({
+    command: shim,
+    args,
+    cwd: directory,
+    input: "prompt & literal\n",
+    timeoutMs: 2_000,
+    maxOutputBytes: 64 * 1024,
+    quiescenceMs: 40,
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  assert.deepEqual(JSON.parse(result.stdout), { args, input: "prompt & literal\n" });
+
+  const sentinel = path.join(directory, "batch-ran.txt");
+  const unknown = path.join(directory, "unknown.cmd");
+  fs.writeFileSync(unknown, `@ECHO off\r\necho unsafe>"${sentinel}"\r\n`);
+  const rejected = await runProcessTree({
+    command: unknown,
+    args: [],
+    cwd: directory,
+    timeoutMs: 2_000,
+    maxOutputBytes: 64 * 1024,
+    quiescenceMs: 40,
+  });
+  assert.equal(rejected.error?.code, "EUNSUPPORTEDCMD");
+  assert.equal(fs.existsSync(sentinel), false, "unrecognized batch command must not execute");
+});
 
 test("runProcessTree exchanges stdin and captures normal stdout and stderr", async () => {
   const result = await runFixture("echo", { input: "hello π\n" });

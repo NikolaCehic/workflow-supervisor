@@ -25,6 +25,7 @@ Version 1.0 replaces the eight-skill workflow framework with one explicit verifi
 - Added a provider-intersection structured-output schema for Codex and Claude Code. Provider output is normalized and then checked against the stricter canonical `WorkerResultV1` runtime rules; provider-schema acceptance alone cannot produce PASS.
 - Added exact-name credential forwarding with `--credential-env`; contract authority must name and explicitly authorize every forwarded variable.
 - Added bounded process-tree execution, timeout and output-overflow cleanup, a quiescence check, and explicit platform limitations in guard warnings.
+- Added shell-free Windows resolution for native executables and recognized npm `.cmd` shims; unknown batch commands fail closed instead of exposing contract or schema arguments to shell interpolation.
 - Added owned-install locking, atomic target replacement, `upgrade`, legacy-skill cleanup, stricter `doctor` checks, and reversible project `.workflow/` ignore handling.
 - Added format-aware migration for every published Codex and Claude Code `0.1.0`-`0.3.0` manifest, including frozen legacy checksums/context and conservative `.gitignore` provenance migration.
 - Added a root Codex plugin and a root Claude marketplace with an entry that points to the isolated `plugins/claude` plugin. Invocation is `$workflow-supervisor` in Codex, `/workflow-supervisor` for a direct Claude skill, and `/workflow-supervisor:workflow-supervisor` for the Claude plugin.
@@ -45,6 +46,7 @@ Version 1.0 replaces the eight-skill workflow framework with one explicit verifi
 - Restricted result extraction to direct output, Claude's successful `structured_output`, or the final Codex `agent_message`; arbitrary command logs and stderr can no longer impersonate a terminal worker result.
 - Required direct and final-agent-message carriers to contain only JSON result objects with whitespace separators; surrounding prose can no longer be silently ignored.
 - Extended the mutation guard across embedded repositories, registered submodules, the full Git control tree, and every workspace-visible symlink in the watched repository root.
+- Made containment, Git-path reconciliation, portable context bytes, and reference identifiers stable across Windows drives, 8.3 path aliases, CRLF checkouts, and native path separators.
 - Preserved legacy DossierV1 forbidden surfaces through migration and rejected ambiguous path/inline contract sources.
 - Kept trusted report IDs, enums, and validated paths structurally stable while scrubbing forwarded credential values from untrusted text and diagnostics; credentials equal to reserved protocol identifiers now block before launch.
 

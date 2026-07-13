@@ -6,7 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), "utf8");
+const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), "utf8").replace(/\r\n?/g, "\n");
 const skillPath = "skills/workflow-supervisor/SKILL.md";
 const skill = read(skillPath);
 const metadata = read("skills/workflow-supervisor/agents/openai.yaml");

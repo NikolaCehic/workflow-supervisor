@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runProcessTree } from "../lib/process-tree.mjs";
+import { prepareProcessInvocation, runProcessTree } from "../lib/process-tree.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, "..");
@@ -385,6 +385,10 @@ function defaultTarget(agent, { scope = "user", project = process.cwd() } = {}) 
 
 function readText(file) {
   return fs.readFileSync(file, "utf8");
+}
+
+function normalizedText(text) {
+  return text.replace(/\r\n?/g, "\n");
 }
 
 function readBoundedRegularFile(file, maxBytes, label) {
@@ -1374,16 +1378,18 @@ function portableContextFor(root, agent, target, names, { includeReferences = fa
     const skillFile = path.join(skillDir, "SKILL.md");
     sections.push(`## Skill: ${skillInvocation(agent, name)}`, "");
     sections.push(`Source: \`skills/${name}/SKILL.md\``, "");
-    sections.push(readText(skillFile).trim(), "");
+    // Portable context is a model-facing protocol artifact. Keep it byte-stable
+    // across Git checkouts and npm consumers regardless of host line endings.
+    sections.push(normalizedText(readText(skillFile)).trim(), "");
 
     if (hasReferences) {
       const resources = includeReferences
         ? markdownResourceFiles(skillDir)
         : markdownResourceFiles(skillDir).filter((file) => selectedReferences.has(path.resolve(file)));
       for (const resourceFile of resources) {
-        const relative = path.relative(skillDir, resourceFile);
+        const relative = path.relative(skillDir, resourceFile).replace(/\\/g, "/");
         sections.push(`### Bundled Reference: $${name}/${relative}`, "");
-        sections.push(readText(resourceFile).trim(), "");
+        sections.push(normalizedText(readText(resourceFile)).trim(), "");
       }
     }
   }
@@ -2634,6 +2640,14 @@ function executableFile(file) {
 }
 
 function commandAvailable(command, cwd = process.cwd()) {
+  if (process.platform === "win32") {
+    try {
+      prepareProcessInvocation({ command, args: [], cwd, env: process.env });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   if (/[\\/]/.test(command) || path.isAbsolute(command)) return executableFile(path.resolve(cwd, expandHome(command)));
   const paths = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
   const extensions = process.platform === "win32"
@@ -2837,8 +2851,16 @@ function gitControlSnapshot(root) {
 
 function gitWorkspaceSnapshot(cwd) {
   const rootText = gitOutput(cwd, ["rev-parse", "--show-toplevel"]);
-  if (rootText == null) return null;
+  const prefixText = gitOutput(cwd, ["rev-parse", "--show-prefix"]);
+  if (rootText == null || prefixText == null) return null;
   const root = rootText.trim();
+  // Git may report the repository through a long Windows path while Node was
+  // given the same directory through an 8.3 alias. Map Git's own repo-relative
+  // names through its repo-to-cwd prefix instead of comparing those aliases.
+  const cwdPrefix = normalizeSurface(prefixText.trim());
+  const relativeToCwd = (relativeToRoot) => normalizeSurface(
+    path.posix.relative(cwdPrefix || ".", normalizeSurface(relativeToRoot)),
+  );
   const filesOutput = gitOutput(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], { encoding: "buffer" });
   const ignoredOutput = gitOutput(root, ["ls-files", "-z", "--others", "--ignored", "--exclude-standard"], { encoding: "buffer" });
   const indexOutput = gitOutput(root, ["ls-files", "-z", "--stage"], { encoding: "buffer" });
@@ -2850,8 +2872,8 @@ function gitWorkspaceSnapshot(cwd) {
   const entries = new Map();
   for (const relativeToRoot of files) {
     const absolute = path.join(root, relativeToRoot);
-    const relativeToCwd = normalizeSurface(path.relative(cwd, absolute));
-    entries.set(relativeToCwd, hashFileEntry(absolute));
+    const workspaceRelative = relativeToCwd(relativeToRoot);
+    entries.set(workspaceRelative, hashFileEntry(absolute));
     let stat;
     try {
       stat = fs.lstatSync(absolute);
@@ -2863,7 +2885,7 @@ function gitWorkspaceSnapshot(cwd) {
     // ls-files so nested repository contents cannot mutate behind that entry.
     if (stat?.isDirectory()) {
       for (const [nestedRelative, fingerprint] of snapshotDirectoryTree(absolute, { skipGitDirectories: false })) {
-        entries.set(normalizeSurface(path.join(relativeToCwd, nestedRelative)), fingerprint);
+        entries.set(normalizeSurface(path.posix.join(workspaceRelative, nestedRelative)), fingerprint);
       }
     }
   }
@@ -2874,11 +2896,11 @@ function gitWorkspaceSnapshot(cwd) {
     const match = record.match(/^160000 [0-9a-f]+ [0-3]\t([\s\S]+)$/);
     if (!match) continue;
     const submoduleRoot = path.join(root, match[1]);
-    if (!pathContains(cwd, submoduleRoot) || !fs.existsSync(submoduleRoot) || !fs.statSync(submoduleRoot).isDirectory()) continue;
-    const prefix = normalizeSurface(path.relative(cwd, submoduleRoot));
+    if (!fs.existsSync(submoduleRoot) || !fs.statSync(submoduleRoot).isDirectory()) continue;
+    const prefix = relativeToCwd(match[1]);
     entries.set(prefix, hashFileEntry(submoduleRoot));
     for (const [relative, fingerprint] of snapshotDirectoryTree(submoduleRoot, { skipGitDirectories: false })) {
-      entries.set(normalizeSurface(path.join(prefix, relative)), fingerprint);
+      entries.set(normalizeSurface(path.posix.join(prefix, relative)), fingerprint);
     }
   }
   const head = gitOutput(root, ["rev-parse", "--verify", "HEAD"])?.trim() || null;
@@ -4098,12 +4120,15 @@ async function delegateDoctor(args) {
   const available = commandAvailable(adapter.command[0], cwd);
   let versionCheck = null;
   if (available && adapter.versionArgs) {
-    const versionResult = spawnSync(adapter.command[0], adapter.versionArgs, {
+    const versionEnv = adapterEnvironment({ credentialEnv });
+    const versionResult = await runProcessTree({
+      command: adapter.command[0],
+      args: adapter.versionArgs,
       cwd,
-      env: adapterEnvironment({ credentialEnv }),
-      encoding: "utf8",
-      timeout: Math.min(parseTimeout(args["timeout-ms"]), 10000),
-      maxBuffer: 1024 * 1024,
+      env: versionEnv,
+      timeoutMs: Math.min(parseTimeout(args["timeout-ms"]), 10000),
+      maxOutputBytes: 1024 * 1024,
+      quiescenceMs: 100,
     });
     const diagnostics = redactDiagnosticPair(
       excerpt(versionResult.stdout, 1000),
@@ -4205,7 +4230,13 @@ function canonicalPotentialPath(input) {
 
 function pathContains(parent, child) {
   const relative = path.relative(parent, child);
-  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== "..");
+  // On Windows, path.relative() returns the absolute child path when the two
+  // values are on different drives. That is never containment.
+  return relative === "" || (
+    !path.isAbsolute(relative) &&
+    !relative.startsWith(`..${path.sep}`) &&
+    relative !== ".."
+  );
 }
 
 function assertProjectTarget(project, requestedTarget) {

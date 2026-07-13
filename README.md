@@ -57,7 +57,7 @@ The wrapper rejects top-level `PASS` when an acceptance ID is missing, duplicate
 
 The CLI provides detection and validation, not complete containment.
 
-- Built-in adapters launch commands without a shell and receive a minimal environment.
+- Built-in adapters launch commands without a shell and receive a minimal environment. On Windows, recognized npm `.cmd` shims are resolved to their native or exact Node target; arbitrary batch commands fail closed.
 - Credential-like variables are absent unless exact names are passed with `--credential-env` and explicitly authorized in the contract.
 - Free-text output and diagnostics scrub exact forwarded credential values; reserved protocol-value collisions are rejected before launch, while validated IDs, enums, and paths remain structurally intact.
 - Output and runtime are bounded; timeout or output overflow triggers process-tree cleanup.

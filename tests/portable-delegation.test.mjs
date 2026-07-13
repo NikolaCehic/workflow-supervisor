@@ -6,7 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), "utf8");
+const read = (relative) => fs.readFileSync(path.join(repoRoot, relative), "utf8").replace(/\r\n?/g, "\n");
 const readJson = (relative) => JSON.parse(read(relative));
 const cliText = read("bin/workflow-skills.mjs");
 const packageJson = readJson("package.json");
@@ -24,11 +24,21 @@ const removedCompanionSkills = [
 ];
 
 function dryRunPack() {
-  const result = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+  const adjacentNpmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+  const npmCli = process.env.npm_execpath && fs.existsSync(process.env.npm_execpath)
+    ? process.env.npm_execpath
+    : fs.existsSync(adjacentNpmCli)
+      ? adjacentNpmCli
+      : null;
+  const command = npmCli ? process.execPath : "npm";
+  const args = npmCli
+    ? [npmCli, "pack", "--dry-run", "--json", "--ignore-scripts"]
+    : ["pack", "--dry-run", "--json", "--ignore-scripts"];
+  const result = spawnSync(command, args, {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(result.status, 0, `npm pack --dry-run failed:\n${result.stderr || result.stdout}`);
+  assert.equal(result.status, 0, `npm pack --dry-run failed:\n${result.error?.message || result.stderr || result.stdout}`);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.length, 1);
   return parsed[0];

@@ -13,7 +13,9 @@ const fixture = path.join(repoRoot, "tests", "fixtures", "reliability-worker.mjs
 const workerSchema = JSON.parse(
   fs.readFileSync(path.join(repoRoot, "schemas", "worker-report-v1.schema.json"), "utf8"),
 );
-const portableDelegationDoc = fs.readFileSync(path.join(repoRoot, "docs", "portable-delegation.md"), "utf8");
+const portableDelegationDoc = fs
+  .readFileSync(path.join(repoRoot, "docs", "portable-delegation.md"), "utf8")
+  .replace(/\r\n?/g, "\n");
 
 function tempDir(label = "case") {
   return fs.mkdtempSync(path.join(os.tmpdir(), `workflow-reliability-${label}-`));
@@ -683,7 +685,9 @@ test("pack validation rejects mutations that relax or corrupt model-facing contr
     }, /allow_implicit_invocation must be false/],
     ["skill metadata contains a prototype-control property", (root) => {
       const file = path.join(root, "skills", "workflow-supervisor", "agents", "openai.yaml");
-      const metadata = fs.readFileSync(file, "utf8").replace("interface:\n", "interface:\n  __proto__: \"forbidden\"\n");
+      const source = fs.readFileSync(file, "utf8");
+      const metadata = source.replace(/interface:\r?\n/, "interface:\n  __proto__: \"forbidden\"\n");
+      assert.notEqual(metadata, source, "prototype-control mutation must alter metadata");
       fs.writeFileSync(file, metadata);
     }, /unsupported metadata key/],
     ["skill frontmatter contains a prototype-control key", (root) => {
@@ -912,4 +916,31 @@ test("single-skill context profiles are selective and stay within declared budge
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Unknown profile unknown/);
   });
+});
+
+test("portable context is byte-stable across LF and CRLF package sources", () => {
+  const crlfRoot = copyPackRoot();
+  const portableMarkdown = [
+    "skills/workflow-supervisor/SKILL.md",
+    "skills/workflow-supervisor/references/tracked-work.md",
+    "skills/workflow-supervisor/references/delegated-work.md",
+    "plugins/claude/skills/workflow-supervisor/SKILL.md",
+    "plugins/claude/skills/workflow-supervisor/references/tracked-work.md",
+    "plugins/claude/skills/workflow-supervisor/references/delegated-work.md",
+  ];
+  for (const relative of portableMarkdown) {
+    const file = path.join(crlfRoot, relative);
+    const lf = fs.readFileSync(file, "utf8").replace(/\r\n?/g, "\n");
+    fs.writeFileSync(file, lf.replace(/\n/g, "\r\n"));
+  }
+
+  for (const profile of ["direct", "tracked", "delegated"]) {
+    const args = ["emit-context", "--agent", "generic", "--profile", profile];
+    const lf = runRaw(args, repoRoot);
+    const crlf = runRaw([...args, "--root", crlfRoot], crlfRoot);
+    assert.equal(lf.status, 0, lf.stderr);
+    assert.equal(crlf.status, 0, crlf.stderr);
+    assert.equal(crlf.stdout, lf.stdout, `${profile} context changed under CRLF source files`);
+    assert.doesNotMatch(crlf.stdout, /^### Bundled Reference: .*\\/m);
+  }
 });
