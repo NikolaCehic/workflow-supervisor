@@ -1,7 +1,0 @@
-interface:
-  display_name: "Loop Policy"
-  short_description: "Control path, workers, retries, and gates"
-  default_prompt: "Use $loop-policy to define proportional retries, budgets, approval gates, delegation, stopping, and resume rules for this supervised loop."
-
-policy:
-  allow_implicit_invocation: false

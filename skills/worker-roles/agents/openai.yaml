@@ -1,7 +1,0 @@
-interface:
-  display_name: "Worker Roles"
-  short_description: "Define narrow worker role contracts"
-  default_prompt: "Use $worker-roles to assign only the worker roles this workflow needs and prevent role bleed."
-
-policy:
-  allow_implicit_invocation: false

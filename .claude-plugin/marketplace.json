@@ -1,0 +1,20 @@
+{
+  "name": "workflow-supervisor",
+  "description": "Official Workflow Supervisor plugin marketplace.",
+  "owner": {
+    "name": "Nikola Cehic",
+    "url": "https://github.com/NikolaCehic"
+  },
+  "plugins": [
+    {
+      "name": "workflow-supervisor",
+      "description": "A compact verification firewall for delegated Codex and Claude Code work.",
+      "version": "1.0.0",
+      "source": "./plugins/claude",
+      "author": {
+        "name": "Nikola Cehic"
+      },
+      "homepage": "https://github.com/NikolaCehic/workflow-supervisor"
+    }
+  ]
+}

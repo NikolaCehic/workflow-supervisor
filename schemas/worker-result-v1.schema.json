@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-supervisor.local/schemas/worker-result-v1.schema.json",
+  "title": "WorkerResultV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "summary", "outcomes"],
+  "properties": {
+    "schema": { "type": "string", "const": "WorkerResultV1" },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] },
+    "summary": { "$ref": "#/$defs/text" },
+    "changes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeRelativePath" }
+    },
+    "outcomes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/outcome" }
+    },
+    "checks": { "$ref": "#/$defs/textList" },
+    "skipped": { "$ref": "#/$defs/textList" },
+    "findings": { "$ref": "#/$defs/textList" },
+    "blocker": { "$ref": "#/$defs/text" },
+    "next": { "$ref": "#/$defs/text" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "BLOCKED" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "blocker": { "$ref": "#/$defs/text" } },
+        "required": ["blocker"]
+      },
+      "else": {
+        "not": {
+          "properties": { "blocker": true },
+          "required": ["blocker"]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "PASS" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "outcomes": { "type": "array", "minItems": 1 } }
+      }
+    }
+  ],
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "pattern": "^\\S(?:[^\\r\\n]*\\S)?$"
+    },
+    "textList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/text" }
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*(?:^|/)(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))[A-Za-z0-9_@+=.-](?:[A-Za-z0-9_@+=. -]*[A-Za-z0-9_@+=-])?(?:/[A-Za-z0-9_@+=.-](?:[A-Za-z0-9_@+=. -]*[A-Za-z0-9_@+=-])?)*$"
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "verdict", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^A[1-9][0-9]*$" },
+        "verdict": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] },
+        "evidence": { "$ref": "#/$defs/textList" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "verdict": { "const": "PASS" } },
+            "required": ["verdict"]
+          },
+          "then": {
+            "properties": { "evidence": { "type": "array", "minItems": 1 } }
+          }
+        }
+      ]
+    }
+  }
+}

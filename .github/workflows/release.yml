@@ -1,0 +1,208 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    name: Verify and create GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ARTIFACT_DIR: dist
+      TAG: ${{ github.ref_name }}
+      WORKFLOW_PATH: .github/workflows/release.yml
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+          cache-dependency-path: package-lock.json
+
+      - name: Verify tag and package version
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          assert.match(process.env.TAG, /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'release tag is not a supported semver tag');
+          assert.equal(process.env.TAG, `v${pkg.version}`, 'package.json version does not match release tag');
+          NODE
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
+          [[ "$(git rev-list -n 1 "$TAG")" == "$GITHUB_SHA" ]]
+          git diff --exit-code
+
+      - name: Install dependencies
+        run: |
+          if [[ -f package-lock.json ]]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            npm install --ignore-scripts --no-audit --no-fund
+          fi
+
+      - name: Validate tagged package
+        run: npm run validate
+
+      - name: Inspect and pack npm artifact
+        run: |
+          mkdir -p "$ARTIFACT_DIR"
+          npm pack --dry-run --json > "$ARTIFACT_DIR/pack-dry-run.json"
+          npm pack --json --pack-destination "$ARTIFACT_DIR" > "$ARTIFACT_DIR/pack.json"
+
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --sbom-format cyclonedx > "$ARTIFACT_DIR/sbom.cdx.json"
+
+      - name: Build and verify provenance artifacts
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { execFileSync } = require('node:child_process');
+
+          const dir = process.env.ARTIFACT_DIR;
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const dry = JSON.parse(fs.readFileSync(path.join(dir, 'pack-dry-run.json'), 'utf8'));
+          const packed = JSON.parse(fs.readFileSync(path.join(dir, 'pack.json'), 'utf8'));
+          assert.equal(dry.length, 1, 'npm pack --dry-run must describe one artifact');
+          assert.equal(packed.length, 1, 'npm pack must produce one artifact');
+          assert.equal(dry[0].name, pkg.name, 'dry-run package name mismatch');
+          assert.equal(dry[0].version, pkg.version, 'dry-run package version mismatch');
+          assert.equal(packed[0].name, pkg.name, 'packed package name mismatch');
+          assert.equal(packed[0].version, pkg.version, 'packed package version mismatch');
+          assert.equal(packed[0].filename, dry[0].filename, 'dry-run and packed filenames differ');
+
+          const paths = dry[0].files.map((file) => file.path);
+          assert.equal(new Set(paths).size, paths.length, 'package contains duplicate paths');
+          for (const required of [
+            'package.json',
+            'LICENSE',
+            'bin/workflow-skills',
+            'skills/workflow-supervisor/SKILL.md',
+          ]) {
+            assert(paths.includes(required), `package is missing ${required}`);
+          }
+          for (const file of paths) {
+            assert(!/(^|\/)(?:\.git|\.github|node_modules|tests)(?:\/|$)/.test(file), `private build path packed: ${file}`);
+            assert(!/(^|\/)\.env(?:\.|$)/.test(file), `environment file packed: ${file}`);
+          }
+
+          const tarball = path.join(dir, packed[0].filename);
+          const bytes = fs.readFileSync(tarball);
+          const sha1 = crypto.createHash('sha1').update(bytes).digest('hex');
+          const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+          const integrity = `sha512-${crypto.createHash('sha512').update(bytes).digest('base64')}`;
+          assert.equal(packed[0].shasum, sha1, 'npm-reported SHA-1 does not match tarball');
+          assert.equal(packed[0].integrity, integrity, 'npm-reported integrity does not match tarball');
+
+          const sbomPath = path.join(dir, 'sbom.cdx.json');
+          const sbom = JSON.parse(fs.readFileSync(sbomPath, 'utf8'));
+          assert.equal(sbom.bomFormat, 'CycloneDX', 'unexpected SBOM format');
+          assert.equal(sbom.metadata?.component?.['bom-ref'], `${pkg.name}@${pkg.version}`, 'SBOM package identity mismatch');
+          assert.equal(sbom.metadata?.component?.version, pkg.version, 'SBOM package version mismatch');
+
+          const repository = process.env.GITHUB_REPOSITORY;
+          const sha = process.env.GITHUB_SHA;
+          const runId = process.env.GITHUB_RUN_ID;
+          const runAttempt = process.env.GITHUB_RUN_ATTEMPT;
+          const provenance = {
+            _type: 'https://in-toto.io/Statement/v1',
+            subject: [{ name: packed[0].filename, digest: { sha256 } }],
+            predicateType: 'https://slsa.dev/provenance/v1',
+            predicate: {
+              buildDefinition: {
+                buildType: `https://github.com/${repository}/actions/workflows/${process.env.WORKFLOW_PATH}`,
+                externalParameters: {
+                  ref: process.env.GITHUB_REF,
+                  package: { name: pkg.name, version: pkg.version },
+                },
+                internalParameters: {
+                  node: process.version,
+                  npm: execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(),
+                  runner: `${process.platform}-${process.arch}`,
+                },
+                resolvedDependencies: [{
+                  uri: `git+https://github.com/${repository}@${sha}`,
+                  digest: { gitCommit: sha },
+                }],
+              },
+              runDetails: {
+                builder: { id: `https://github.com/${repository}/actions/runs/${runId}` },
+                metadata: { invocationId: `${runId}-${runAttempt}` },
+              },
+            },
+          };
+          const provenancePath = path.join(dir, 'provenance.intoto.json');
+          fs.writeFileSync(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`);
+
+          const digestTargets = [tarball, sbomPath, provenancePath];
+          const checksumLines = digestTargets.map((file) => {
+            const digest = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+            return `${digest}  ${path.basename(file)}`;
+          });
+          fs.writeFileSync(path.join(dir, 'SHA256SUMS'), `${checksumLines.join('\n')}\n`);
+
+          const statement = JSON.parse(fs.readFileSync(provenancePath, 'utf8'));
+          assert.equal(statement.subject[0].digest.sha256, sha256, 'provenance digest mismatch');
+          assert.equal(statement.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit, sha, 'provenance commit mismatch');
+          for (const line of checksumLines) {
+            const [expected, filename] = line.split(/\s+/);
+            const actual = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, filename))).digest('hex');
+            assert.equal(actual, expected, `checksum mismatch for ${filename}`);
+          }
+          NODE
+
+      - name: Smoke-test packed consumer
+        run: |
+          tarball="$(node -p "require('./dist/pack.json')[0].filename")"
+          expected_version="$(node -p "require('./package.json').version")"
+          consumer="$RUNNER_TEMP/workflow-supervisor-consumer"
+          rm -rf "$consumer"
+          mkdir -p "$consumer"
+          cd "$consumer"
+          npm init --yes >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund "$GITHUB_WORKSPACE/$ARTIFACT_DIR/$tarball"
+          actual_version="$(npx --no-install workflow-supervisor --version)"
+          [[ "$actual_version" == "$expected_version" ]]
+          npx --no-install workflow-supervisor validate
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(
+            "$ARTIFACT_DIR"/*.tgz
+            "$ARTIFACT_DIR/SHA256SUMS"
+            "$ARTIFACT_DIR/sbom.cdx.json"
+            "$ARTIFACT_DIR/provenance.intoto.json"
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$TAG" "${assets[@]}" \
+              --verify-tag \
+              --title "$TAG" \
+              --notes-file ".github/releases/${TAG}.md"
+          fi

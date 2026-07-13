@@ -1,7 +1,0 @@
-interface:
-  display_name: "Acceptance Matrix"
-  short_description: "Turn goals into verifiable criteria"
-  default_prompt: "Use $acceptance-matrix to define material requirements, expected outcomes, evidence, adversarial checks, verdicts, and explicit waiver handling."
-
-policy:
-  allow_implicit_invocation: false

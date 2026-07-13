@@ -28,7 +28,7 @@ function runRaw(args, cwd = tempDir()) {
 }
 
 function parseReport(result) {
-  assert.equal(result.status, 0, result.stderr);
+  assert.ok([0, 2].includes(result.status), result.stderr || `unexpected exit ${result.status}`);
   return JSON.parse(result.stdout);
 }
 
@@ -105,6 +105,27 @@ function writeDossier(cwd, options = {}) {
   return file;
 }
 
+test("legacy DossierV1 rejects blank items in required, explicit, and optional arrays", async (t) => {
+  for (const field of ["authority", "assumptions", "reviewers"]) {
+    await t.test(field, () => {
+      const cwd = tempDir(`blank-${field}`);
+      const lines = dossierText().split("\n");
+      const fieldIndex = lines.indexOf(`${field}:`);
+      if (fieldIndex === -1) lines.push(`${field}:`, "  - reviewer-one");
+      const insertAt = fieldIndex === -1 ? lines.length - 1 : fieldIndex + 1;
+      lines.splice(insertAt, 0, "  - \"\"");
+      const file = path.join(cwd, "dossier.yaml");
+      fs.writeFileSync(file, lines.join("\n"));
+
+      const result = runRaw(["validate-dossier", file, "--json"], cwd);
+      assert.equal(result.status, 1, result.stderr);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.valid, false);
+      assert.ok(report.errors.some((error) => error.includes(`${field}[0] must be a non-empty string`)), JSON.stringify(report));
+    });
+  }
+});
+
 function delegate({ cwd, role = "verifier", unit = "U1", mode = "pass", target, dossier }) {
   return runRaw([
     "delegate",
@@ -120,6 +141,7 @@ function delegate({ cwd, role = "verifier", unit = "U1", mode = "pass", target, 
     dossier || path.join(cwd, "dossier.yaml"),
     "--adapter-command",
     adapterCommand(mode, target),
+    "--unsafe-adapter-override",
     "--prompt-mode",
     "stdin",
   ], cwd);
@@ -141,7 +163,7 @@ function initCommittedRepo(cwd) {
 
 function copyPackRoot() {
   const root = tempDir("pack-root");
-  for (const entry of ["skills", "schemas", "adapters"]) {
+  for (const entry of ["skills", "plugins", "schemas", "adapters", "config", ".codex-plugin", ".claude-plugin"]) {
     fs.cpSync(path.join(repoRoot, entry), path.join(root, entry), { recursive: true });
   }
   return root;
@@ -291,6 +313,29 @@ test("ignored forbidden files remain visible to the git surface guard", () => {
   assert.ok(report.guard.role_violations.some((item) => /forbidden|verifier changed/i.test(item)));
 });
 
+test("legacy DossierV1 forbidden surfaces survive contract migration", () => {
+  const cwd = tempDir("legacy-forbidden-migration");
+  const unit = "U-LEGACY-FORBIDDEN";
+  fs.mkdirSync(path.join(cwd, "allowed"));
+  writeDossier(cwd, {
+    role: "implementer",
+    unit,
+    allowed: ["allowed"],
+    forbidden: ["allowed/forbidden.txt"],
+  });
+  const report = parseReport(delegate({
+    cwd,
+    role: "implementer",
+    unit,
+    mode: "edit-reported",
+    target: "allowed/forbidden.txt",
+  }));
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "report_validation_failed");
+  assert.ok(report.guard.observed_changed_surfaces.includes("allowed/forbidden.txt"), JSON.stringify(report.guard));
+  assert.ok(report.guard.role_violations.some((item) => /changed forbidden surface/.test(item)), JSON.stringify(report.guard));
+});
+
 test("git guard detects empty-directory creation outside allowed surfaces", () => {
   const cwd = tempDir("git-empty-directory");
   const unit = "U-GIT-EMPTY-DIRECTORY";
@@ -300,19 +345,19 @@ test("git guard detects empty-directory creation outside allowed surfaces", () =
   const report = parseReport(delegate({ cwd, role: "verifier", unit, mode: "mkdir-empty", target: "unlisted-empty" }));
   assert.equal(report.status, "BLOCKED");
   assert.ok(report.guard.observed_changed_surfaces.includes("unlisted-empty"), JSON.stringify(report.guard));
-  assert.ok(report.guard.allowed_surface_violations.includes("unlisted-empty"), JSON.stringify(report.guard));
+  assert.ok(report.guard.role_violations.some((item) => /verifier changed/i.test(item)), JSON.stringify(report.guard));
 });
 
-test("git guard snapshots Git object storage and nested repository worktrees", async (t) => {
-  await t.test("Git object storage", () => {
-    const cwd = tempDir("git-objects");
-    const unit = "U-GIT-OBJECTS";
+test("git guard snapshots semantic Git control state and nested repository worktrees", async (t) => {
+  await t.test("Git control state", () => {
+    const cwd = tempDir("git-control");
+    const unit = "U-GIT-CONTROL";
     writeDossier(cwd, { role: "verifier", unit });
     initCommittedRepo(cwd);
 
-    const report = parseReport(delegate({ cwd, role: "verifier", unit, mode: "edit", target: ".git/objects/audit-marker" }));
+    const report = parseReport(delegate({ cwd, role: "verifier", unit, mode: "edit", target: ".git/hooks/pre-commit" }));
     assert.equal(report.status, "BLOCKED");
-    assert.ok(report.guard.observed_changed_surfaces.some((item) => item.includes("objects/audit-marker")), JSON.stringify(report.guard));
+    assert.ok(report.guard.observed_changed_surfaces.includes("<git:control:worktree:hooks/pre-commit>"), JSON.stringify(report.guard));
   });
 
   await t.test("nested repository tracked content", () => {
@@ -372,7 +417,7 @@ test("CLI allowed surfaces can narrow but cannot widen the dossier contract", ()
     "--adapter-command", adapterCommand("mark-launched", "launched.txt"), "--prompt-mode", "stdin",
   ], cwd));
   assert.equal(report.status, "BLOCKED");
-  assert.equal(report.reason, "invalid_dossier");
+  assert.equal(report.reason, "invalid_contract");
   assert.match(report.summary, /only narrow/);
   assert.equal(fs.existsSync(path.join(cwd, "launched.txt")), false);
 });
@@ -502,13 +547,10 @@ test("invalid inline dossier text cannot launch a worker", () => {
   ], cwd);
 
   assert.equal(fs.existsSync(marker), false, "invalid dossier text launched the worker");
-  if (result.status === 0) {
-    const report = JSON.parse(result.stdout);
-    assert.equal(report.status, "BLOCKED");
-    assert.equal(report.reason, "invalid_dossier");
-  } else {
-    assert.match(result.stderr, /dossier|unsupported|unknown/i);
-  }
+  assert.equal(result.status, 2, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "BLOCKED");
+  assert.equal(report.reason, "invalid_dossier");
 });
 
 test("schema-invalid worker fields and extra properties block", async (t) => {
@@ -577,6 +619,7 @@ test("successful and blocked delegate output conform to the packaged WorkerRepor
     path.join(cwd, "dossier.yaml"),
     "--adapter-command",
     JSON.stringify(["workflow-supervisor-reliability-missing-binary"]),
+    "--unsafe-adapter-override",
     "--prompt-mode",
     "stdin",
   ], cwd));
@@ -612,6 +655,18 @@ test("pack validation rejects mutations that relax or corrupt model-facing contr
       schema.properties.feedback_loop_waiver.additionalProperties = true;
       fs.writeFileSync(file, `${JSON.stringify(schema, null, 2)}\n`);
     }, /feedback_loop_waiver must reject unknown properties/],
+    ["provider transport introduces an unsupported keyword", (root) => {
+      const file = path.join(root, "schemas", "worker-result-transport-v1.schema.json");
+      const schema = JSON.parse(fs.readFileSync(file, "utf8"));
+      schema.description = "Unsupported provider metadata";
+      fs.writeFileSync(file, `${JSON.stringify(schema, null, 2)}\n`);
+    }, /provider-unsupported keyword description/],
+    ["provider transport makes one field optional", (root) => {
+      const file = path.join(root, "schemas", "worker-result-transport-v1.schema.json");
+      const schema = JSON.parse(fs.readFileSync(file, "utf8"));
+      schema.required = schema.required.filter((field) => field !== "next");
+      fs.writeFileSync(file, `${JSON.stringify(schema, null, 2)}\n`);
+    }, /must require every declared property/],
     ["Claude verifier loses read-only permission mode", (root) => {
       const file = path.join(root, "adapters", "claude-code", "adapter.json");
       const adapter = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -636,6 +691,15 @@ test("pack validation rejects mutations that relax or corrupt model-facing contr
       const text = fs.readFileSync(file, "utf8").replace("name: workflow-supervisor", "name: workflow-supervisor\n__proto__: forbidden-extra-key");
       fs.writeFileSync(file, text);
     }, /invalid frontmatter/],
+    ["Claude skill silently regains implicit model invocation", (root) => {
+      const file = path.join(root, "plugins", "claude", "skills", "workflow-supervisor", "SKILL.md");
+      const text = fs.readFileSync(file, "utf8").replace("disable-model-invocation: true", "disable-model-invocation: false");
+      fs.writeFileSync(file, text);
+    }, /must disable model invocation/],
+    ["Claude skill body drifts from the canonical skill", (root) => {
+      const file = path.join(root, "plugins", "claude", "skills", "workflow-supervisor", "SKILL.md");
+      fs.appendFileSync(file, "\nDrift.\n");
+    }, /skill body must match/],
     ["Claude verifier adds a second permission mode", (root) => {
       const file = path.join(root, "adapters", "claude-code", "adapter.json");
       const adapter = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -677,8 +741,6 @@ test("self and overlapping installs fail without mutating the source pack", asyn
         root,
         "--target",
         target,
-        "--skills",
-        "workflow-supervisor",
         "--force",
       ], root);
 
@@ -705,8 +767,6 @@ test("uninstall refuses an unowned target without mutation", () => {
     root,
     "--target",
     target,
-    "--skills",
-    "workflow-supervisor",
   ], root);
 
   assert.notEqual(result.status, 0, "unowned uninstall unexpectedly succeeded");
@@ -714,10 +774,13 @@ test("uninstall refuses an unowned target without mutation", () => {
   assert.equal(fs.readFileSync(sentinel, "utf8"), "user-owned directory\n");
 });
 
-test("incremental install and subset uninstall preserve manifest and context state", () => {
+test("single-skill install, repair, and uninstall preserve manifest ownership", () => {
   const root = copyPackRoot();
-  const target = tempDir("incremental-install");
-  const install = (skill) => runRaw([
+  const target = tempDir("single-skill-install");
+  const sentinel = path.join(target, "user-owned.txt");
+  fs.writeFileSync(sentinel, "preserve me\n");
+
+  const install = (...extra) => runRaw([
     "install",
     "--agent",
     "codex",
@@ -725,20 +788,48 @@ test("incremental install and subset uninstall preserve manifest and context sta
     root,
     "--target",
     target,
-    "--skills",
-    skill,
+    ...extra,
   ], root);
 
-  assert.equal(install("workflow-supervisor").status, 0);
-  assert.equal(install("workflow-docs").status, 0);
+  const installed = install();
+  assert.equal(installed.status, 0, installed.stderr);
   assert.ok(fs.existsSync(path.join(target, "workflow-supervisor", "SKILL.md")));
-  assert.ok(fs.existsSync(path.join(target, "workflow-docs", "SKILL.md")));
 
-  let manifest = JSON.parse(fs.readFileSync(path.join(target, ".workflow-skills-install.json"), "utf8"));
-  assert.deepEqual(manifest.skills.map((item) => item.name).sort(), ["workflow-docs", "workflow-supervisor"]);
-  let context = fs.readFileSync(path.join(target, "WORKFLOW_SKILL_PACK.md"), "utf8");
+  const manifestFile = path.join(target, ".workflow-skills-install.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+  assert.deepEqual(Object.keys(manifest).sort(), [
+    "agent",
+    "installedAt",
+    "package",
+    "project",
+    "scope",
+    "skills",
+    "target",
+    "version",
+    "workflowGitignore",
+  ]);
+  assert.deepEqual(manifest.skills.map((item) => item.name), ["workflow-supervisor"]);
+  assert.deepEqual(Object.keys(manifest.skills[0]).sort(), ["checksum", "name"]);
+  assert.match(manifest.skills[0].checksum, /^[a-f0-9]{64}$/);
+
+  const contextFile = path.join(target, "WORKFLOW_SKILL_PACK.md");
+  const context = fs.readFileSync(contextFile, "utf8");
   assert.match(context, /\$workflow-supervisor/);
-  assert.match(context, /\$workflow-docs/);
+  assert.doesNotMatch(context, /\$workflow-docs/);
+
+  let doctor = parseReport(runRaw(["doctor", "--agent", "codex", "--target", target], root));
+  assert.equal(doctor.status, "PASS", JSON.stringify(doctor));
+  assert.deepEqual(doctor.installedSkills.map((item) => item.name), ["workflow-supervisor"]);
+
+  fs.appendFileSync(path.join(target, "workflow-supervisor", "SKILL.md"), "\nunauthorized local edit\n");
+  doctor = parseReport(runRaw(["doctor", "--agent", "codex", "--target", target], root));
+  assert.equal(doctor.status, "BLOCKED");
+  assert.ok(doctor.errors.some((error) => /checksum mismatch/.test(error)), JSON.stringify(doctor));
+
+  const repaired = install("--force");
+  assert.equal(repaired.status, 0, repaired.stderr);
+  doctor = parseReport(runRaw(["doctor", "--agent", "codex", "--target", target], root));
+  assert.equal(doctor.status, "PASS", JSON.stringify(doctor));
 
   const uninstall = runRaw([
     "uninstall",
@@ -748,57 +839,77 @@ test("incremental install and subset uninstall preserve manifest and context sta
     root,
     "--target",
     target,
-    "--skills",
-    "workflow-docs",
   ], root);
   assert.equal(uninstall.status, 0, uninstall.stderr);
-  assert.ok(fs.existsSync(path.join(target, "workflow-supervisor", "SKILL.md")));
-  assert.equal(fs.existsSync(path.join(target, "workflow-docs")), false);
-
-  manifest = JSON.parse(fs.readFileSync(path.join(target, ".workflow-skills-install.json"), "utf8"));
-  assert.deepEqual(manifest.skills.map((item) => item.name), ["workflow-supervisor"]);
-  context = fs.readFileSync(path.join(target, "WORKFLOW_SKILL_PACK.md"), "utf8");
-  assert.match(context, /\$workflow-supervisor/);
-  assert.doesNotMatch(context, /\$workflow-docs/);
+  assert.equal(fs.existsSync(path.join(target, "workflow-supervisor")), false);
+  assert.equal(fs.existsSync(manifestFile), false);
+  assert.equal(fs.existsSync(contextFile), false);
+  assert.equal(fs.readFileSync(sentinel, "utf8"), "preserve me\n");
 });
 
-test("portable context defaults are bounded and all skills or references require explicit opt-in", async (t) => {
-  const target = tempDir("portable-context-target");
-  const baseArgs = ["emit-context", "--agent", "generic", "--target", target];
+test("single-skill context profiles are selective and stay within declared budgets", async (t) => {
+  const expectations = {
+    direct: [],
+    tracked: ["$workflow-supervisor/references/tracked-work.md"],
+    delegated: ["$workflow-supervisor/references/delegated-work.md"],
+  };
 
-  const defaultResult = runRaw(baseArgs, repoRoot);
-  assert.equal(defaultResult.status, 0, defaultResult.stderr);
-  assert.ok(Buffer.byteLength(defaultResult.stdout) <= 64 * 1024, `default context is ${Buffer.byteLength(defaultResult.stdout)} bytes`);
-  assert.match(defaultResult.stdout, /## Skill: \$workflow-supervisor/);
-  assert.doesNotMatch(defaultResult.stdout, /## Skill: \$(?!workflow-supervisor\b)/);
-  assert.doesNotMatch(defaultResult.stdout, /### Bundled Reference:/);
+  for (const [profile, expectedReferences] of Object.entries(expectations)) {
+    await t.test(profile, () => {
+      const budget = parseReport(runRaw(["context-budget", "--profile", profile], repoRoot));
+      assert.equal(budget.schema, "ContextBudgetV1");
+      assert.deepEqual(budget.catalog.skills, ["workflow-supervisor"]);
+      assert.deepEqual(budget.profile.skills, ["workflow-supervisor"]);
+      assert.equal(budget.profile.name, profile);
+      assert.equal(budget.catalog.within_budget, true);
+      assert.equal(budget.profile.within_budget, true);
+      assert.ok(budget.catalog.catalog_bytes <= budget.catalog.max_catalog_bytes);
+      assert.ok(budget.profile.context_bytes <= budget.profile.max_context_bytes);
+      assert.equal(budget.catalog.estimated_catalog_tokens, Math.ceil(budget.catalog.catalog_bytes / 4));
+      assert.equal(budget.profile.estimated_context_tokens, Math.ceil(budget.profile.context_bytes / 4));
 
-  await t.test("all skills are explicit but references remain excluded", () => {
-    const all = runRaw([...baseArgs, "--skills", "all"], repoRoot);
-    assert.equal(all.status, 0, all.stderr);
-    for (const name of [
-      "acceptance-matrix",
-      "dossier-builder",
-      "loop-policy",
-      "source-corpus",
-      "work-unit",
-      "worker-roles",
-      "workflow-docs",
-      "workflow-supervisor",
-    ]) {
-      assert.match(all.stdout, new RegExp(`## Skill: \\$${name}\\b`));
-    }
-    assert.doesNotMatch(all.stdout, /### Bundled Reference:/);
+      const result = runRaw(["emit-context", "--agent", "generic", "--profile", profile], repoRoot);
+      assert.equal(result.status, 0, result.stderr);
+      const rendered = result.stdout.replace(/\r?\n$/, "");
+      assert.equal(Buffer.byteLength(rendered), budget.profile.context_bytes);
+      assert.match(rendered, /## Skill: \$workflow-supervisor/);
+      assert.doesNotMatch(rendered, /## Skill: \$(?!workflow-supervisor\b)/);
+      assert.doesNotMatch(rendered, /\$(?:acceptance-matrix|dossier-builder|loop-policy|source-corpus|work-unit|worker-roles|workflow-docs)\b/);
+
+      const references = [...rendered.matchAll(/^### Bundled Reference: (.+)$/gm)].map((match) => match[1]);
+      assert.deepEqual(references, expectedReferences);
+    });
+  }
+
+  await t.test("direct is the bounded default", () => {
+    const implicit = runRaw(["emit-context", "--agent", "generic"], repoRoot);
+    const direct = runRaw(["emit-context", "--agent", "generic", "--profile", "direct"], repoRoot);
+    assert.equal(implicit.status, 0, implicit.stderr);
+    assert.equal(direct.status, 0, direct.stderr);
+    assert.equal(implicit.stdout, direct.stdout);
+    assert.doesNotMatch(implicit.stdout, /### Bundled Reference:/);
   });
 
-  await t.test("references require an explicit flag", () => {
-    const references = runRaw([
-      ...baseArgs,
-      "--skills",
-      "workflow-docs",
+  await t.test("all references require explicit opt-in", () => {
+    const result = runRaw([
+      "emit-context",
+      "--agent",
+      "generic",
+      "--profile",
+      "direct",
       "--include-references",
     ], repoRoot);
-    assert.equal(references.status, 0, references.stderr);
-    assert.match(references.stdout, /### Bundled Reference: \$workflow-docs\//);
+    assert.equal(result.status, 0, result.stderr);
+    const references = [...result.stdout.matchAll(/^### Bundled Reference: (.+)$/gm)].map((match) => match[1]).sort();
+    assert.deepEqual(references, [
+      "$workflow-supervisor/references/delegated-work.md",
+      "$workflow-supervisor/references/tracked-work.md",
+    ]);
+  });
+
+  await t.test("unknown profiles fail closed", () => {
+    const result = runRaw(["emit-context", "--agent", "generic", "--profile", "unknown"], repoRoot);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unknown profile unknown/);
   });
 });

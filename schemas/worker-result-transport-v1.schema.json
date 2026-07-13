@@ -1,0 +1,55 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "summary",
+    "changes",
+    "outcomes",
+    "checks",
+    "skipped",
+    "findings",
+    "blocker",
+    "next"
+  ],
+  "properties": {
+    "schema": { "type": "string", "enum": ["WorkerResultV1"] },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] },
+    "summary": { "type": "string" },
+    "changes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "verdict", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "verdict": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "skipped": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocker": { "type": "string" },
+    "next": { "type": "string" }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "workflow-supervisor",
+  "description": "A compact verification firewall for delegated Codex and Claude Code work.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Nikola Cehic"
+  },
+  "homepage": "https://github.com/NikolaCehic/workflow-supervisor",
+  "repository": "https://github.com/NikolaCehic/workflow-supervisor",
+  "license": "MIT",
+  "keywords": ["delegation", "verification", "skills", "codex", "claude-code"]
+}

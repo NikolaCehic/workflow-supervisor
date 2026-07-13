@@ -1,6 +1,7 @@
 ---
 name: workflow-supervisor
 description: Supervise Codex or Claude Code work with compact contracts, evidence validation, and mutation checks. Use only when the user explicitly invokes $workflow-supervisor, /workflow-supervisor, a plugin-qualified workflow-supervisor command, or asks for Workflow Supervisor. Route small work directly, track only work that benefits from resume state, and delegate only when independence adds value. Never infer authority for external or irreversible actions.
+disable-model-invocation: true
 ---
 
 # Workflow Supervisor

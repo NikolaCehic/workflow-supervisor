@@ -1,60 +1,125 @@
-# Workflow And Documentation Artifacts
+# Artifacts
 
-`$workflow-docs` creates only the smallest useful artifact set.
+Workflow Supervisor does not require a document set. Artifacts exist only when they reduce resume risk, provide a machine contract, or preserve evidence for a real consumer.
 
-Default location: create Markdown workflow artifacts under `<workspace>/.workflow/`. Use another directory only when the user names one, the project already has a clearer workflow-state convention, or the artifact is a final deliverable that belongs elsewhere.
+## Route Defaults
 
-In Git-backed codebases, `.workflow/` is local working state. Inspect existing ignore conventions first; when local mutation is authorized, ensure `.workflow/` is ignored before creating it. Otherwise keep state inline or use an already-ignored location. Do not commit workflow state unless the user explicitly makes it a deliverable.
+| Route | Default artifact |
+|---|---|
+| `direct` | None |
+| `tracked` | Inline state; optionally one `.workflow/LEDGER.md` |
+| `delegated` | One JSON contract per worker; the JSON result may be retained when another step consumes it |
 
-## Workflow Control
+Do not recreate the 0.x catalog of specifications, worker maps, acceptance matrices, decision logs, repair tickets, and publication checklists by default. Add a project-native issue, ADR, runbook, or deliverable only when the user requests it or a downstream workflow requires it.
 
-- `.workflow/LEDGER.md`
-- `.workflow/WORKFLOW.md`
-- `.workflow/SOURCE-CORPUS.md`
-- `.workflow/SPEC.md`
-- `.workflow/WORK-UNITS.md`
-- `.workflow/DOSSIER.md` human dossier index
-- `.workflow/dossiers/*.yaml` canonical validated `DossierV1` machine contracts
-- `.workflow/WORKER-MAP.md`
-- `.workflow/ACCEPTANCE-MATRIX.md`
-- `.workflow/VERIFICATION-REPORT.md`
-- `.workflow/REPAIR-TICKETS.md`
-- `.workflow/DECISIONS.md`
-- `.workflow/HANDOFF.md`
-- `.workflow/OUTCOME.md`
-- `.workflow/GOAL-STATE.md`
-- `.workflow/AGENT-BRIEF.md`
-- `.workflow/PROTOTYPE-DECISION.md`
-- `.workflow/ARCHITECTURE-RECOMMENDATIONS.md`
+## Local Workflow Directory
 
-## Documentation Production
+Recommended local names:
 
-- `.workflow/DOCUMENTATION-BRIEF.md`
-- `.workflow/CONTENT-INVENTORY.md`
-- `.workflow/OUTLINE.md`
-- `.workflow/CONTENT-DRAFT.md`
-- `.workflow/CLAIMS-REGISTER.md`
-- `.workflow/STYLE-GUIDE.md`
-- `.workflow/GLOSSARY.md`
-- `.workflow/ASSET-REGISTER.md`
-- `.workflow/REVIEW-PLAN.md`
-- `.workflow/REVISION-QUEUE.md`
-- `.workflow/PUBLISHING-CHECKLIST.md`
-- `.workflow/PUBLICATION-LOG.md`
-- `.workflow/MAINTENANCE-PLAN.md`
+```text
+.workflow/
+  LEDGER.md
+  contracts/
+    U1-implementer.json
+    U1-verifier.json
+  reports/
+    U1-implementer.json
+    U1-verifier.json
+```
 
-## State Medium
+The CLI does not create these state files for you. Project-scope installation adds `.workflow/` to `.gitignore` when the project does not already ignore it. Keep workflow state untracked unless the user explicitly makes it a deliverable.
 
-Markdown is the default, but state may also be an inline brief, spreadsheet tab, ticket set, design annotation, CRM note, runbook, decision log, slide appendix, whiteboard note, or chat continuation note.
+## Compact Ledger
 
-For `lean_work_unit_runner`, prefer one compact ledger over multiple workflow documents. Each executable row should carry `id`, `source_ref`, `slice_type`, `scope`, `done`, `check`, `status`, touched surfaces, evidence, and blockers. Product/integration rows also carry observable behavior, expected outcome, demo or verification, layers touched, and horizontal justification. Escalated units may link to strict-mode SPEC, dossier, or verification artifacts only when needed.
+Use one ledger only when several outcomes or a pause make resume state valuable.
 
-For product or integration implementation, `WORK-UNITS.md` and lean ledger rows should also carry `slice_type`, `observable_behavior`, `expected_outcome`, `demo_or_verification`, `layers_touched`, and `horizontal_slice_justification` where useful. Prefer `tracer_bullet` units for behavior work. Use horizontal slices only for prefactoring, migration safety, infrastructure, documentation, research, or risk-boundary work with a concrete justification.
+```yaml
+- id: U1
+  source: docs/retry-policy.md
+  scope: src/retry.js and focused tests
+  outcome: retries stop at the documented limit
+  check: node --test tests/retry.test.js
+  status: active
+  changes: []
+  evidence: []
+  blocker_or_next: implement the bounded change
+```
 
-For outcome-bearing verification, `ACCEPTANCE-MATRIX.md` and `VERIFICATION-REPORT.md` should include a verification environment, outcome evaluation rows, preferred and available verification capabilities, evidence strength, invalid PASS conditions, and any required external checks. Row-level `CONDITIONAL_PASS` means strongly inferred but not fully observable; it must not be treated as final green status without explicit waiver evidence.
+Allowed statuses are `pending`, `active`, `pass`, `fail`, and `blocked`. Keep one active unit unless mutation surfaces are proven disjoint. Before a pause, record the blocker and exact next action; do not copy full transcripts.
 
-For native thread or subagent delegation, `WORKER-MAP.md` records the native resource id, terminal report, and any lifecycle action/result actually supported by the transport. Do not invent a close operation; platform-managed completion may itself be terminal.
+## Delegation Contract
 
-Machine dossiers distinguish a narrow display role from the canonical `implementer|verifier|repair|documenter` machine role and include `boundary_kind`, a non-empty authority list, and `authority_source` pointing to the granting user, policy, or artifact. Both legacy report-schema fields equal `WorkerReportV1`. A read-only Approver may recommend or report a designated authority's decision; persisting it requires a separately authorized documenter, and neither creates consequential authority.
+New delegated work uses strict JSON `DelegationContractV1`:
 
-Record `execution_path` as `autonomous_goal` or `human_in_loop`. In `OUTCOME.md`, name the exact final action and target actually performed; use `KEEP_LOCAL`, `NO_CHANGES`, `CANCELLED`, or `UNDECIDED` only when those are the actual disposition.
+```text
+.workflow/contracts/<unit>-<role>.json
+```
+
+The contract owns objective, authority provenance, inputs, write scope, expected effect, acceptance outcomes, checks, and stop conditions. It does not own the worker prompt or wrapper report fields.
+
+Validate before execution:
+
+```bash
+workflow-supervisor validate-contract .workflow/contracts/U1-implementer.json --json
+```
+
+`DossierV1` files under `.workflow/dossiers/` are legacy migration inputs. Preserve them only while an existing integration still depends on `validate-dossier` or `delegate --dossier`.
+
+## Worker Result And Report
+
+`WorkerResultV1` is untrusted compact model output. `WorkerReportV1` is the wrapper-normalized result printed to stdout.
+
+If a workflow needs durable evidence, redirect stdout explicitly:
+
+```bash
+workflow-supervisor delegate \
+  --agent codex \
+  --role verifier \
+  --unit U1 \
+  --cwd . \
+  --contract .workflow/contracts/U1-verifier.json \
+  > .workflow/reports/U1-verifier.json
+```
+
+Shell redirection is owned by the caller, not the delegated worker. The file is opened before the CLI starts and the final JSON is written after the worker mutation snapshot, so it is not worker-mutation evidence. Prefer capturing stdout in the supervising process and persisting it only after checking the exit code and JSON status.
+
+Do not treat a retained JSON report as trusted merely because it exists. Check the command exit code, top-level status, guard warnings, role violations, and the acceptance evidence.
+
+## Install Artifacts
+
+Every managed target contains:
+
+```text
+<skill-target>/
+  .workflow-skills-install.json
+  WORKFLOW_SKILL_PACK.md
+  workflow-supervisor/
+    SKILL.md
+    agents/openai.yaml
+    references/
+```
+
+The manifest records package version, agent, scope, canonical target, project ownership when applicable, `.workflow/` ignore ownership, installed time, and skill checksum. `doctor` compares the manifest with both installed content and current package source.
+
+Do not edit managed files in place if you expect normal upgrade or uninstall. Back up an intentional customization, then use `--force` only after review.
+
+## Portable Context
+
+`emit-context` produces a standalone Markdown artifact for an agent that cannot discover a skill folder:
+
+```bash
+workflow-supervisor emit-context --agent generic --profile direct --out AGENTS.md
+```
+
+The selected profile embeds only its route reference. `--include-references` embeds every reference and intentionally increases context size. Generated context grants no authority and does not create an automated worker transport.
+
+## Uninstall Retention
+
+Uninstall removes only manifest-owned install content. For project scope:
+
+- an empty installer-created `.workflow/` directory can be removed
+- the installer-added ignore entry can be removed when no other project install needs it
+- non-empty `.workflow/` state and its ignore coverage are retained
+- pre-existing ignore coverage is never claimed as installer-owned
+
+Review retained state manually. Uninstall does not delete user-authored contracts, ledgers, reports, or deliverables.

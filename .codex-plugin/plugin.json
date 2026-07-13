@@ -1,0 +1,29 @@
+{
+  "name": "workflow-supervisor",
+  "version": "1.0.0",
+  "description": "A compact verification firewall for delegated Codex and Claude Code work.",
+  "author": {
+    "name": "Nikola Cehic",
+    "url": "https://github.com/NikolaCehic"
+  },
+  "homepage": "https://github.com/NikolaCehic/workflow-supervisor",
+  "repository": "https://github.com/NikolaCehic/workflow-supervisor",
+  "license": "MIT",
+  "keywords": ["codex", "claude-code", "delegation", "verification", "skills"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Workflow Supervisor",
+    "shortDescription": "Verify delegated agent work with compact contracts.",
+    "longDescription": "Choose direct, tracked, or delegated execution and reject unsupported success with evidence and mutation checks.",
+    "developerName": "Nikola Cehic",
+    "category": "Developer Tools",
+    "capabilities": ["Verification", "Delegation", "Skills"],
+    "websiteURL": "https://github.com/NikolaCehic/workflow-supervisor",
+    "defaultPrompt": [
+      "Verify this delegated implementation before accepting it.",
+      "Choose the lightest safe workflow for this task.",
+      "Audit these changes against explicit acceptance evidence."
+    ],
+    "brandColor": "#2563EB"
+  }
+}
