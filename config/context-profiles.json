@@ -1,0 +1,39 @@
+{
+  "schema": "ContextProfilesV1",
+  "default_profile": "direct",
+  "token_estimate": {
+    "method": "utf8_bytes_divided_by_4",
+    "bytes_per_token": 4
+  },
+  "max_catalog_bytes": 600,
+  "profiles": {
+    "direct": {
+      "description": "Routing, authority, execution, and verification without extra references.",
+      "skills": [
+        "workflow-supervisor"
+      ],
+      "references": [],
+      "max_context_bytes": 6000
+    },
+    "tracked": {
+      "description": "Compact bounded or resumable same-session execution.",
+      "skills": [
+        "workflow-supervisor"
+      ],
+      "references": [
+        "skills/workflow-supervisor/references/tracked-work.md"
+      ],
+      "max_context_bytes": 7000
+    },
+    "delegated": {
+      "description": "Compact contract, isolated worker, evidence validation, and mutation detection.",
+      "skills": [
+        "workflow-supervisor"
+      ],
+      "references": [
+        "skills/workflow-supervisor/references/delegated-work.md"
+      ],
+      "max_context_bytes": 7000
+    }
+  }
+}

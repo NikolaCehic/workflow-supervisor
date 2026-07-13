@@ -147,6 +147,8 @@ if (mode === "invalid") {
     prompt.includes("each dossier acceptance-row ID exactly once");
   if (!reservedAreNull || !promptIsLean) console.log("native schema or prompt contract mismatch");
   else console.log(JSON.stringify(report()));
+} else if (mode === "pass") {
+  console.log(JSON.stringify(report()));
 } else {
   console.log("worker log before JSON");
   console.log(JSON.stringify(report()));

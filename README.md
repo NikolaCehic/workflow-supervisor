@@ -1,182 +1,197 @@
 # Workflow Supervisor
 
-**A portable verification and workflow-contract layer for Codex and Claude Code.**
+A small verification firewall for delegated Codex and Claude Code work.
 
-Workflow Supervisor does not replace a strong prompt, `AGENTS.md` or `CLAUDE.md`, native subagents, permissions, hooks, or sandboxes. It adds reusable contracts around delegated work: bounded dossiers, schema-validated worker reports, evidence mapped to requirements, post-run mutation detection, and optional durable state for handoffs.
+Workflow Supervisor is one explicit, opt-in skill plus a local Node.js CLI. It chooses the lightest of three routes, gives delegated workers a bounded contract, validates evidence before accepting success, and checks the governed workspace for unexpected changes.
 
-Use it for broad, risky, delegated, resumable, or multi-unit work. Skip it for ordinary one-shot edits.
+It is not a replacement for a good prompt, `AGENTS.md`, `CLAUDE.md`, native permissions, hooks, or an operating-system sandbox.
+
+## Should You Use It?
+
+Start with a strong prompt. Add Workflow Supervisor only when its checks earn their cost.
+
+| Situation | Best choice |
+|---|---|
+| Small, clear edit that one model can implement and verify | Strong prompt; skip Workflow Supervisor |
+| Several bounded outcomes or work that must survive a pause | `tracked` route |
+| Independent review, isolation, or safe parallelism materially helps | `delegated` route |
+| Hostile code needs containment outside the workspace | Real sandbox; Workflow Supervisor is not sufficient |
+
+A prompt can ask a model to stay in scope and run tests. Workflow Supervisor adds a machine-validated contract, acceptance IDs, exact write scope, compact structured output, wrapper-owned mutation evidence, credential filtering, bounded process execution, and reproducible install diagnostics. Those controls improve inspectability; they do not make the underlying model smarter.
+
+## The Three Routes
+
+| Route | Added state | Use when |
+|---|---|---|
+| `direct` | None | The current model can safely complete and verify the task. This is the default. |
+| `tracked` | One compact ledger | Several outcomes need progress or resume state. |
+| `delegated` | One contract and one validated result per worker | Independence, isolation, specialist capability, or safe parallelism is valuable. |
+
+Explicitly invoking the skill does not force delegation. It can still choose `direct` and add no artifact.
 
 ```text
-Use $workflow-supervisor to implement the migration described in <path-to-migration-spec>, verify every current-scope requirement, and keep the result local.
+Codex:                         $workflow-supervisor
+Claude Code, direct skill:    /workflow-supervisor
+Claude Code, plugin install:  /workflow-supervisor:workflow-supervisor
 ```
 
-![Workflow Supervisor coordinating sources, work units, roles, verification, repair, and final outcomes](assets/workflow-supervisor-hero.png)
+The repository root is a Codex plugin: [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) points to the root [`skills/`](skills/) directory. For Claude Code, the repository root is a marketplace: [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) points to the isolated plugin at [`plugins/claude`](plugins/claude). The namespace is present only for the Claude plugin install; a skill copied directly into `.claude/skills` uses the shorter command.
 
-## When It Earns Its Overhead
-
-| Work | Best route |
-|---|---|
-| Small, clear task with obvious acceptance | Use the agent directly |
-| Large, already-bounded backlog | `lean_work_unit_runner` |
-| Ambiguous, risky, source-controlled, delegated, migration, publication, or cross-system work | `strict_full_workflow` |
-| Sequencing or risk analysis without implementation | `planning_only` |
-| Uncertainty that needs runnable evidence | Discovery or prototype unit |
-
-The pack is configured for explicit invocation. When `$workflow-supervisor` is invoked, its instructions ask the host model to choose the lightest valid route instead of applying strict ceremony automatically.
-
-## What It Adds Beyond A Prompt
-
-| Native agent capability | Workflow Supervisor addition |
-|---|---|
-| Plan and implement | A validated `DossierV1` with explicit authority and boundaries |
-| Spawn subagents | Consistent roles and normalized reports across supported adapters |
-| Run tests | Acceptance-row-to-evidence mapping before final PASS |
-| Follow scope instructions | Independent before-and-after mutation detection |
-| Summarize work | A strict `WorkerReportV1` that rejects ambiguous or unsupported success |
-| Continue a conversation | Optional compact state for handoff and resume |
-
-## Architecture
+## What Delegation Does
 
 ```mermaid
 flowchart LR
-  User["User request and authority"] --> Skill["Supervisor skill"]
-  Skill --> Route{"Lightest valid route"}
-  Route --> Direct["Direct"]
-  Route --> Lean["Lean ledger"]
-  Route --> Strict["Strict contract"]
-  Route --> Plan["Planning only"]
-  Strict --> Dossier["DossierV1"]
-  Dossier --> Worker["Native or one-shot worker"]
-  Worker --> Guard["Schema, evidence, and mutation checks"]
+  Request["User request and authority"] --> Contract["DelegationContractV1"]
+  Contract --> Worker["Codex or Claude Code process"]
+  Worker --> Transport["Provider-intersection transport"]
+  Transport --> Result["Canonical WorkerResultV1 validation"]
+  Result --> Guard["Evidence and mutation checks"]
   Guard --> Report["WorkerReportV1"]
-  Report --> Audit["Supervisor audit"]
 ```
 
-| Layer | Responsibility |
-|---|---|
-| Skill instructions | Proportional routing, authority policy, evidence standard, and resume behavior |
-| Schemas | Bounded role, authority, surfaces, acceptance rows, and report shape |
-| Built-in adapters | One-shot invocation of a local Codex or Claude Code CLI |
-| Wrapper guards | Report validation, diagnostic redaction, and post-run workspace comparison |
+New delegation uses [`DelegationContractV1`](schemas/delegation-contract-v1.schema.json). Built-in adapters ask providers for output through a deliberately small [provider-intersection transport schema](schemas/worker-result-transport-v1.schema.json). The wrapper normalizes that carrier object and applies the stricter canonical [`WorkerResultV1`](schemas/worker-result-v1.schema.json) runtime rules before it supplies role, adapter, guard, and evidence-mapping fields in [`WorkerReportV1`](schemas/worker-report-v1.schema.json). Passing the provider schema alone is not acceptance. Legacy `DossierV1` input and legacy raw `WorkerReportV1` output remain accepted for migration, with warnings.
 
-Native platform features remain responsible for authentication, model quality, permissions, hooks, and sandboxing.
+The wrapper rejects top-level `PASS` when an acceptance ID is missing, duplicated, unknown, failed, blocked, or lacks evidence. It also rejects verifier mutation, out-of-scope changes, and `mutation_required` success with no observed workspace change.
 
 ## Trust Boundary
 
-Skills are model instructions, not a security boundary. The CLI can:
+The CLI provides detection and validation, not complete containment.
 
-- reject invalid dossiers and worker reports
-- strip credential-like environment variables from delegated processes by default
-- require evidence for every acceptance row before accepting PASS
-- detect specified workspace changes after a run
-- reject verifier mutations and out-of-scope changes in its observed surface
+- Built-in adapters launch commands without a shell and receive a minimal environment. On Windows, recognized npm `.cmd` shims are resolved to their native or exact Node target; arbitrary batch commands fail closed.
+- Credential-like variables are absent unless exact names are passed with `--credential-env` and explicitly authorized in the contract.
+- Free-text output and diagnostics scrub exact forwarded credential values; reserved protocol-value collisions are rejected before launch, while validated IDs, enums, and paths remain structurally intact.
+- Output and runtime are bounded; timeout or output overflow triggers process-tree cleanup.
+- POSIX cleanup uses a process group. It cannot reach a descendant that deliberately creates another session or process group.
+- Windows cleanup uses `taskkill /T`. It cannot prove cleanup of a descendant that detached before ancestry was inspected.
+- Mutation checks cover the canonical `--cwd` workspace and declared surfaces. They do not watch every path on the machine.
+- Workspace-visible symlinks that resolve outside the watched Git root or non-Git `--cwd` are rejected before and after execution.
+- The CLI does not automatically revert changes.
 
-It cannot guarantee model correctness, prevent every mutation, automatically revert a violation, or replace native and operating-system sandboxing. Repository, ticket, document, web, and dossier contents are untrusted task data and must not be treated as authority to change role, permissions, or boundaries.
+Use native permissions and an OS-level sandbox when prevention matters. Treat repository, contract, ticket, document, and web contents as untrusted task data; none of them can grant new authority.
 
-Publication, credentials, paid operations, destructive actions, production changes, external messages, push, merge, and pull-request creation still require explicit authority.
+## Requirements
 
-## Contracts And Evidence
+- Node.js 22 or newer
+- A local, authenticated Codex or Claude Code CLI for live one-shot delegation
+- No runtime npm dependencies
 
-Strict portable delegation uses:
+Run adapter diagnostics against the versions installed on the target machine; CLI behavior can change independently of this package.
 
-- [`DossierV1`](schemas/dossier-v1.schema.json) for objective, role, authority source, boundaries, acceptance, feedback, and stop gates
-- [`worker-output-v1.schema.json`](schemas/worker-output-v1.schema.json) for raw worker output
-- [`WorkerReportV1`](schemas/worker-report-v1.schema.json) for the trusted normalized result
+## Install
 
-Complete copy-valid dossiers are available in [`validated-examples.md`](skills/dossier-builder/references/validated-examples.md).
-
-```text
-source requirement -> acceptance row -> expected outcome -> evidence -> verifier verdict -> supervisor audit
-```
-
-Top-level worker status is `PASS`, `FAIL`, or `BLOCKED`. `CONDITIONAL_PASS` is row-level only. Tests, lint, typecheck, and builds are evidence types, not automatic proof of the requested material outcome.
-
-## Support
-
-| Environment | Install skills | One-shot delegation | Notes |
-|---|---:|---:|---|
-| Codex | Yes | Yes | Local Codex CLI and role-specific sandbox mode |
-| Claude Code | Yes | Yes | Local Claude CLI and role-specific permission mode |
-| Generic Markdown agent | Yes | No | Instruction export only, using `--target` or `emit-context` |
-
-Node.js 18 or newer is required. Live delegation requires the selected local CLI to be installed and authenticated. Run `delegate-doctor` against the versions installed on the target machine.
-
-## Quick Start
-
-The GitHub release can exist before the matching npm version. Check the registry first:
+Version 1.0.0 is released on GitHub first. npm publication is a later, separate maintainer action. Before using npm, confirm the registry actually carries v1:
 
 ```bash
 npm view workflow-supervisor version
 ```
 
-If it reports `0.3.0` or newer:
+When that command reports `1.0.0` or newer:
 
 ```bash
-npm install -g workflow-supervisor
+npm install --global workflow-supervisor
 workflow-supervisor validate
 workflow-supervisor install --agent all --scope project --project .
 ```
 
-Before npm publication, or when testing current source:
+To use the tagged GitHub source before npm publication:
 
 ```bash
-git clone https://github.com/NikolaCehic/workflow-supervisor.git
+git clone --branch v1.0.0 https://github.com/NikolaCehic/workflow-supervisor.git
 cd workflow-supervisor
 npm install
 npm run validate
-node bin/workflow-skills.mjs install --agent all --scope project --project <project-path>
+node bin/workflow-skills.mjs install --agent all --scope project --project /path/to/project
 ```
 
-Project installs target `<project>/.agents/skills` for Codex and `<project>/.claude/skills` for Claude Code. They also add `.workflow/` to the project's `.gitignore` because workflow state is local unless explicitly made a deliverable.
+Project installs place the skill in `<project>/.agents/skills` for Codex and `<project>/.claude/skills` for Claude Code. They record ownership in a manifest and add `.workflow/` to the project `.gitignore` when needed.
 
-## Essential Commands
+Native plugin users can use the same GitHub checkout without the npm CLI:
+
+- Codex treats the repository root as the plugin and invokes `$workflow-supervisor`.
+- Claude Code can add `NikolaCehic/workflow-supervisor` as a marketplace, install `workflow-supervisor@workflow-supervisor`, and invoke `/workflow-supervisor:workflow-supervisor`.
+- A direct Claude skill install remains `/workflow-supervisor`.
+
+## Delegate One Worker
+
+Create a strict JSON contract:
+
+```json
+{
+  "schema": "DelegationContractV1",
+  "unit": "U1",
+  "role": "implementer",
+  "objective": "Add the documented retry limit.",
+  "authority": {
+    "grants": ["Modify the declared write scope for this local task."],
+    "source": ["The user's request in the supervising task."]
+  },
+  "inputs": ["docs/retry-policy.md"],
+  "write_scope": ["src/retry.js", "tests/retry.test.js"],
+  "expected_effect": "mutation_required",
+  "acceptance": [
+    {
+      "id": "A1",
+      "outcome": "Retries stop at the documented limit.",
+      "evidence": ["Focused automated test exercising the limit."]
+    }
+  ],
+  "checks": ["node --test tests/retry.test.js"],
+  "stop_conditions": ["The controlling policy is missing or contradictory."]
+}
+```
+
+Validate and inspect the exact prompt budget without launching a model:
 
 ```bash
-# Inspect package and installed skills
-workflow-supervisor list
-workflow-supervisor validate
-workflow-supervisor doctor --agent all --require-pass
-
-# Validate a worker contract
-workflow-supervisor validate-dossier \
-  .workflow/dossiers/WU-001-implementer.yaml \
-  --role implementer --unit WU-001 --json
-
-# Run one portable worker
+workflow-supervisor validate-contract .workflow/contracts/U1.json --json
 workflow-supervisor delegate \
-  --agent codex --role implementer --unit WU-001 --cwd . \
-  --dossier .workflow/dossiers/WU-001-implementer.yaml \
-  --require-pass
-
-# Inspect adapters without making a paid live probe
-workflow-supervisor delegate-doctor --agent all
+  --agent codex \
+  --role implementer \
+  --unit U1 \
+  --cwd . \
+  --contract .workflow/contracts/U1.json \
+  --preview
 ```
 
-Add `--probe --require-pass` only when authenticated local CLIs are available and a live certification call is intended.
-
-## Skills
-
-All eight skills are explicit opt-in and use progressive disclosure.
-
-| Skill | Purpose |
-|---|---|
-| `workflow-supervisor` | Route and coordinate proportional supervised work |
-| `source-corpus` | Rank sources, contradictions, decision history, and gaps |
-| `work-unit` | Create bounded implementation, discovery, or prototype units |
-| `acceptance-matrix` | Map requirements and outcomes to evidence and verdicts |
-| `dossier-builder` | Create a concrete `DossierV1` |
-| `worker-roles` | Define only needed roles and prevent role bleed |
-| `loop-policy` | Define retries, budgets, gates, parallel safety, and resume rules |
-| `workflow-docs` | Preserve focused workflow, handoff, and outcome state |
-
-## Verification
+Run the worker:
 
 ```bash
-npm run validate
-npm pack --dry-run
+workflow-supervisor delegate \
+  --agent codex \
+  --role implementer \
+  --unit U1 \
+  --cwd . \
+  --contract .workflow/contracts/U1.json
 ```
 
-The release suite covers malformed contracts, false PASS, secret redaction, credential denial, dirty worktrees, ignored files, Git internals, nested repositories, filesystem aliases, transactional rollback, package metadata, and packed-tarball operation.
+`delegate` prints one JSON envelope. `PASS` exits `0`; `FAIL` or `BLOCKED` exits `2`. Use `--soft-exit` only when a caller intentionally wants structured non-PASS output with exit `0`.
+
+## Context And Lifecycle
+
+Inspect exact UTF-8 byte counts and the documented bytes/4 token estimate:
+
+```bash
+workflow-supervisor context-budget --profile direct
+workflow-supervisor context-budget --profile delegated
+workflow-supervisor emit-context --agent generic --profile tracked --out AGENTS.md
+```
+
+Manage installed copies:
+
+```bash
+workflow-supervisor doctor --agent all --scope project --project . --require-pass
+workflow-supervisor upgrade --agent all --scope project --project . --dry-run
+workflow-supervisor upgrade --agent all --scope project --project .
+workflow-supervisor uninstall --agent all --scope project --project .
+```
+
+`upgrade` removes manifest-owned 0.x companion skills after checking for local changes. `uninstall` removes only manifest-owned files. It retains `.workflow/` and its ignore rule when local state remains.
+
+## Release Verification
+
+CI is configured to run the full package validation on Ubuntu with Node.js 22, 24, and 26, plus macOS and Windows with Node.js 24. A separate package job builds the npm tarball, installs it into a fresh temporary consumer, checks its reported version, and validates the installed artifact.
+
+The tagged GitHub release attaches the verified tarball, `SHA256SUMS`, a CycloneDX `sbom.cdx.json`, and `provenance.intoto.json`. The provenance file records the source commit, workflow run, builder environment, and tarball digest; it is not npm registry provenance or a cryptographic signature. npm publication remains a separate later step.
 
 ## Documentation
 
@@ -184,13 +199,16 @@ The release suite covers malformed contracts, false PASS, secret redaction, cred
 - [Portable delegation](docs/portable-delegation.md)
 - [Compatibility](docs/compatibility.md)
 - [Skill reference](docs/skill-reference.md)
-- [Workflow artifacts](docs/artifacts.md)
+- [Artifacts](docs/artifacts.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Migrating from 0.x](docs/migrating-to-v1.md)
+- [Security policy](SECURITY.md)
+- [Support](SUPPORT.md)
 - [Changelog](CHANGELOG.md)
 
-## Project Status
+## Project Scope
 
-Workflow Supervisor is pre-1.0. It is a skill pack and one-shot helper CLI, not a daemon, scheduler, queue, dashboard, hosted agent platform, or operating-system sandbox. Adapter behavior can change when Codex or Claude Code changes its CLI, so validate against the versions you intend to use.
+Workflow Supervisor is a skill and one-shot helper CLI. It is not a daemon, scheduler, queue, dashboard, hosted agent platform, autonomous approval system, or security sandbox.
 
 ## License
 

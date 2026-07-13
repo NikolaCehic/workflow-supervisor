@@ -1,196 +1,299 @@
 # CLI Reference
 
-The package exposes two executables:
+The package exposes the same CLI through two executable names:
 
 ```bash
-workflow-supervisor
-workflow-skills
+workflow-supervisor <command>
+workflow-skills <command>
 ```
 
-When using `npx`, run:
+Node.js 22 or newer is required. With `npx`, use `npx workflow-supervisor <command>`.
 
-```bash
-npx workflow-supervisor <command>
-```
+## Host Invocation And Plugin Layout
 
-## Commands
+The model-facing skill has host-specific invocation syntax:
+
+| Host/install surface | Invocation |
+|---|---|
+| Codex plugin or installed Codex skill | `$workflow-supervisor` |
+| Claude Code skill copied directly into `.claude/skills` | `/workflow-supervisor` |
+| Claude Code marketplace plugin | `/workflow-supervisor:workflow-supervisor` |
+
+The repository root is the Codex plugin because `.codex-plugin/plugin.json` points to `./skills/`. The repository root is a Claude marketplace, not the Claude plugin itself: `.claude-plugin/marketplace.json` points to `plugins/claude`, which contains the Claude plugin manifest and skill copy. These native plugin surfaces do not require the package CLI. The commands below manage direct skill copies, portable context, contracts, delegation, and diagnostics.
+
+## Exit Codes
+
+| Code | Meaning |
+|---:|---|
+| `0` | Command completed successfully; for `delegate`, the normalized result is `PASS`. |
+| `1` | CLI usage, validation, install, adapter-doctor, or runtime command error. |
+| `2` | `delegate` returned a valid `FAIL` or `BLOCKED` envelope. |
+
+`delegate --soft-exit` changes a structured `FAIL` or `BLOCKED` result to exit `0`. It does not change the JSON status. `doctor` and `delegate-doctor` report blocked state in JSON and exit nonzero only when `--require-pass` is used.
+
+`--version` or `-v` must be used alone. `--help` or `-h` prints command help.
+
+## Package Inspection
 
 ### `list`
 
-Print skills bundled with the package.
+Print the bundled discoverable skills. V1 prints only `workflow-supervisor`.
 
 ```bash
 workflow-supervisor list
 ```
 
+`--root <path>` validates another source tree, primarily for package development.
+
 ### `validate`
 
-Validate skill folder structure, `SKILL.md` frontmatter, required metadata, opt-in policy, adapter metadata, and the `WorkerReportV1` and `DossierV1` schema artifacts.
+Validate the skill, metadata, local links, context profiles and budgets, adapters, and all packaged contract/report schemas.
 
 ```bash
 workflow-supervisor validate
 ```
 
-### `validate-dossier`
+`--root <path>` selects another package root.
 
-Validate one machine-checkable `DossierV1` contract before delegation. The command accepts JSON or the documented flat DossierV1 YAML subset, either directly or in a fenced Markdown block. Unsupported YAML structures, duplicate keys, and unknown DossierV1 properties fail closed.
+### `context-budget`
 
-```bash
-workflow-supervisor validate-dossier .workflow/dossiers/U1-implementer.yaml --role implementer --unit U1 --json
-```
-
-The validator rejects missing fields, unresolved open questions, broad boundaries such as `all files`, missing forbidden surfaces, role mismatches, unit mismatches, missing authority provenance, missing or duplicate acceptance-row IDs, malformed feedback loops, and worker prompts that do not require `WorkerReportV1`. `portable_delegate` requires `boundary_kind: local_path`; native or same-session contracts may use `boundary_kind: artifact`. Bug-fix or risky behavior-change dossiers require a concrete red-capable `feedback_loop`. A `feedback_loop_waiver` is accepted only as a structured reason, substitute evidence, and approving user or governing source, and it is mutually exclusive with `feedback_loop`.
-
-### `doctor`
-
-Inspect package, target, manifest ownership, installed files, checksums, and package freshness. `status: "PASS"` means every manifest-owned skill matches both its recorded checksum and the current package source. Missing, malformed, modified, or stale installs return `status: "BLOCKED"` with per-skill diagnostics.
+Render one portable profile in memory and report exact UTF-8 bytes, the configured maximum, and an estimated token count.
 
 ```bash
-workflow-supervisor doctor --agent codex
-workflow-supervisor doctor --agent claude-code
-workflow-supervisor doctor --agent generic --target ./agent-skills
-workflow-supervisor doctor --agent all --require-pass
-```
-
-Use `--require-pass` when automation must receive a nonzero exit if one inspected install is unhealthy. JSON diagnostics are still printed.
-
-### `install`
-
-Install skills into a supported agent target.
-
-```bash
-workflow-supervisor install --agent codex
-workflow-supervisor install --agent claude-code
-workflow-supervisor install --agent generic --target ./agent-skills
-workflow-supervisor install --agent all --scope project --project .
-workflow-supervisor uninstall --agent codex --scope user
+workflow-supervisor context-budget --profile direct
+workflow-supervisor context-budget --profile tracked --agent codex
+workflow-supervisor context-budget --profile delegated --agent claude-code
 ```
 
 Options:
 
 ```text
---agent codex|claude-code|generic|all
---scope user|project  Install to user-level or project-level location where supported.
---project <path>      Project root for project-scope installs.
---target <path>       Override install directory. Required for generic installs.
---skills all|a,b      Install all skills or a comma-separated subset.
---force               Replace existing installed skill folders.
---dry-run             Validate and print intended action without writing.
---root <path>         Use another package root.
+--profile direct|tracked|delegated  Default: direct.
+--agent codex|claude-code|generic  Changes the exported heading. Default: generic.
+--root <path>                      Use another package root.
+```
+
+Byte counts are exact. Token counts use `ceil(utf8_bytes / 4)` and are estimates because provider tokenizers differ.
+
+## Contract Validation
+
+### `validate-contract`
+
+Validate a strict JSON `DelegationContractV1` without launching a worker.
+
+```bash
+workflow-supervisor validate-contract .workflow/contracts/U1.json
+workflow-supervisor validate-contract .workflow/contracts/U1.json --json
+```
+
+The path can also be supplied as `--contract <path>`. Invalid input exits `1`. Contract files are limited to 64 KiB, must be regular non-symlink files, and must not change while read.
+
+### `validate-dossier` (legacy)
+
+Validate a 0.x `DossierV1` before migration.
+
+```bash
+workflow-supervisor validate-dossier .workflow/dossiers/U1.yaml \
+  --role implementer \
+  --unit U1 \
+  --json
+```
+
+The path can also be supplied as `--dossier <path>`. JSON and the documented flat DossierV1 YAML subset are accepted. Dossier files are limited to 1 MiB. New integrations should use `validate-contract`.
+
+## Install Lifecycle
+
+### `install`
+
+Install the single skill and an ownership manifest.
+
+```bash
+workflow-supervisor install --agent codex --scope user
+workflow-supervisor install --agent claude-code --scope project --project .
+workflow-supervisor install --agent all --scope project --project .
+workflow-supervisor install --agent generic --target ./agent-skills
+```
+
+Options:
+
+```text
+--agent codex|claude-code|generic|all  Default: generic. `all` means Codex and Claude Code.
+--scope user|project                   Default: user.
+--project <path>                       Project root for project scope; default is cwd.
+--target <path>                        Override the skill directory; required for generic.
+--force                                Replace a conflicting destination after explicit review.
+--dry-run                              Validate and describe without writing.
+--root <path>                          Install from another package root.
 ```
 
 Default targets:
 
-| Agent | Scope | Default |
+| Agent | User scope | Project scope |
 |---|---|---|
-| Codex | user | `~/.agents/skills` |
-| Codex | project | `<project>/.agents/skills` |
-| Claude Code | user | `${CLAUDE_HOME:-~/.claude}/skills` |
-| Claude Code | project | `<project>/.claude/skills` |
-| Generic | any | requires `--target` |
+| Codex | `~/.agents/skills` | `<project>/.agents/skills` |
+| Claude Code | `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` | `<project>/.claude/skills` |
+| Generic | explicit `--target` | explicit `--target` |
 
-`--agent all` installs only the built-in target set: Codex and Claude Code. Use `generic` with `--target` when you want a Markdown instruction bundle for another environment.
+A project install records `.workflow/` in the project `.gitignore` when it is not already covered. Install operations are locked per target and replace managed entries transactionally.
 
-Installs are manifest-owned and transactional. Incremental installs merge with the existing manifest, reinstalling the same unchanged skill is idempotent, and expected preflight failures occur before the target is replaced. One explicit `--target` cannot be shared by `--agent all`. Source/target overlap, root/home targets, symlink targets, unowned existing skill folders, malformed manifests, and unexplained checksum drift are rejected before mutation.
+### `doctor`
 
-Project-scope installs also ensure `<project>/.gitignore` contains `.workflow/`. Workflow artifacts are local supervisor state by default and should not be pushed with the consuming repository unless the user explicitly makes them deliverables.
+Compare the manifest, installed checksums, package version, generated context, legacy orphan directories, and project ignore ownership.
+
+```bash
+workflow-supervisor doctor --agent codex
+workflow-supervisor doctor --agent all --scope project --project . --require-pass
+workflow-supervisor doctor --agent generic --target ./agent-skills
+```
+
+Without `--require-pass`, an unhealthy install is reported as `status: "BLOCKED"` but the command exits `0`. Target-selection options are `--agent`, `--scope`, `--project`, and `--target`; add `--require-pass` when an unhealthy result must fail the command.
+
+### `upgrade`
+
+Upgrade a manifest-owned install to the current one-skill layout. The command requires an existing valid manifest.
+
+```bash
+workflow-supervisor upgrade --agent all --scope project --project . --dry-run
+workflow-supervisor upgrade --agent all --scope project --project .
+```
+
+The upgrade removes manifest-owned 0.x companion skill directories and replaces `workflow-supervisor`. Modified or unowned directories block unless `--force` is supplied after backup and review. Options match `install`.
 
 ### `uninstall`
 
-Remove manifest-owned skill folders. A subset uninstall preserves the remaining skills, manifest, and package context. Uninstall refuses targets without a matching ownership manifest and refuses checksum drift unless `--force` explicitly authorizes removal of the selected drifted skill.
+Remove manifest-owned skill and generated context files.
 
 ```bash
 workflow-supervisor uninstall --agent codex --scope user
+workflow-supervisor uninstall --agent all --scope project --project . --dry-run
 workflow-supervisor uninstall --agent generic --target ./agent-skills
-workflow-supervisor uninstall --agent generic --target ./agent-skills --skills workflow-docs
 ```
+
+Modified owned files block unless `--force` is supplied. For project installs, the installer removes its `.workflow/` ignore entry only when no other project install needs it and no retained workflow state is present. Empty install directories created under the project are removed when safe.
+
+## Portable Context
 
 ### `emit-context`
 
-Create a portable instruction file for a Markdown-reading workspace. By default, output embeds only `workflow-supervisor/SKILL.md` and no bundled references. Select more skills explicitly and use `--references` only when the receiving task needs their Markdown references.
+Write a Markdown context for an agent that cannot discover skill directories.
 
 ```bash
-workflow-supervisor emit-context --agent generic --target ./agent-skills --out AGENTS.md
-workflow-supervisor emit-context --agent claude-code --skills workflow-supervisor,workflow-docs --references --out CLAUDE.md
+workflow-supervisor emit-context --agent generic --profile direct --out AGENTS.md
+workflow-supervisor emit-context --agent claude-code --profile tracked --out CLAUDE.md
+workflow-supervisor emit-context --agent generic --profile delegated --include-references --out AGENTS.md --force
 ```
 
 Options:
 
 ```text
---agent codex|claude-code|generic
+--agent codex|claude-code|generic      Default: generic.
+--profile direct|tracked|delegated     Default: direct.
 --scope user|project
 --project <path>
---target <path>
---skills all|a,b      Embed a comma-separated subset. Defaults to workflow-supervisor.
---include-references  Also embed bundled Markdown references for selected skills.
---references          Short alias for --include-references.
---out <path>          Write to a new file instead of stdout.
---force               Allow replacing an existing --out file.
---root <path>         Use another package root.
+--target <path>                        Heading hint for the expected skill directory.
+--include-references                   Include every bundled reference, not only the profile reference.
+--out <path>                           Write to a file; otherwise print to stdout.
+--force                                Overwrite an existing output file.
+--root <path>                          Export from another package root.
 ```
+
+`--references` is accepted as an alias for `--include-references`. A profile already embeds its selected route reference; `--include-references` intentionally produces a larger export.
+
+## Delegation
 
 ### `delegate`
 
-Run one role-scoped worker through an installed Codex or Claude Code CLI and print exactly one normalized `WorkerReportV1` JSON object. Missing or invalid `DossierV1` contracts, missing CLIs, invalid worker output, timeouts, non-zero PASS results, PASS without evidence, top-level `CONDITIONAL_PASS`, PASS with conditional outcome rows, forbidden-surface changes, and verifier mutations become `BLOCKED` reports instead of unstructured prose.
-
-The normalized envelope schema lives at `schemas/worker-report-v1.schema.json`; the raw-worker reserved-null contract lives at `schemas/worker-output-v1.schema.json`. Built-in adapters receive a dereferenced strict worker-output schema via Codex `--output-schema` or Claude Code `--json-schema`, and the trusted wrapper validates and enriches the final normalized report after the run.
-
-`WorkerReportV1.status` remains `PASS`, `FAIL`, or `BLOCKED`. The wrapper rejects missing, extra, or mistyped report fields and rejects multiple conflicting report objects. A top-level PASS must include substantive evidence and exactly mapped PASS outcome rows for every acceptance-row ID in the dossier. `CONDITIONAL_PASS` is allowed only as an outcome row verdict to record strongly inferred but not fully observable behavior.
-
-`--dossier` is a hard preflight gate. It must parse as `DossierV1` and pass concrete-field checks before the worker process starts. Internal inline dossiers used by adapter probes pass the same validation. The delegate command uses the dossier's `allowed_surfaces` and `forbidden_surfaces` as the authority floor: `--allowed-surfaces` may only narrow the declared allowed set, while `--forbidden-surfaces` adds prohibitions and cannot remove dossier prohibitions. Dossier text is delimited as untrusted task data and cannot override role, guard, or report rules.
+Run one local Codex or Claude Code process and print one normalized `WorkerReportV1` JSON envelope.
 
 ```bash
-workflow-supervisor delegate --agent codex --role implementer --unit U1 --cwd . --dossier .workflow/dossiers/U1-implementer.yaml --allowed-surfaces src,tests
-workflow-supervisor delegate --agent claude-code --role verifier --unit U1 --cwd . --dossier .workflow/dossiers/U1-verifier.yaml --forbidden-surfaces src
+workflow-supervisor delegate \
+  --agent codex \
+  --role implementer \
+  --unit U1 \
+  --cwd . \
+  --contract .workflow/contracts/U1.json
 ```
 
-Options:
+Required options:
 
 ```text
 --agent codex|claude-code
 --role implementer|verifier|repair|documenter
---unit <id>                 A 1-128 character safe work-unit identifier.
---cwd <path>                Workspace for the worker command. Defaults to current directory.
---dossier <path>            Role-scoped dossier to include in the worker prompt.
---allowed-surfaces a,b      Optional comma-separated mutable boundaries.
---forbidden-surfaces a,b    Optional comma-separated forbidden boundaries.
---timeout-ms <ms>           Positive integer timeout. Defaults to 120000; maximum 86400000.
---allow-dirty              Allow mutable delegation when git status is already dirty.
---allow-credential-env     Explicitly pass credential-like environment variables to the adapter process.
---require-pass             Exit nonzero when the normalized worker status is not PASS; JSON is still printed.
---adapter-command <json>    Override the adapter command as a JSON array of strings.
---prompt-mode stdin|arg     Send the prompt on stdin or as the final argument. Overrides default only with --adapter-command.
+--unit <safe-id>
+--contract <path> | --contract-text <strict-json>
 ```
 
-Adapter commands live in `adapters/<agent>/adapter.json` as command arrays, not shell strings. Use `--adapter-command` for local testing or platform setups whose executable name differs from the default. Override commands run with `--cwd` as their working directory, so use absolute paths for custom scripts unless they live in that workspace. Diagnostic command arrays redact credential-looking flags and assignments. Credential-like variables and language/runtime injection variables are removed from the adapter environment by default; `--allow-credential-env` also requires an explicit credential-environment authorization in `DossierV1.authority` and should be used only when the selected CLI cannot use its normal local login. Codex and Claude receive the prompt over stdin so dossier size and text are not exposed through process arguments.
+Execution options:
+
+```text
+--cwd <path>                 Governed workspace. Default: cwd.
+--timeout-ms <integer>       Default: 120000; maximum: 86400000.
+--max-prompt-bytes <integer> Default: 65536; maximum: 1048576.
+--preview                    Validate and report prompt/guard metadata without launching a model.
+--allow-dirty                Permit a mutable role to start from a dirty Git baseline.
+--credential-env <a,b>       Forward only these exact environment variable names.
+--soft-exit                  Exit 0 for structured FAIL/BLOCKED output.
+```
+
+Advanced guard options:
+
+```text
+--allowed-surfaces <a,b>     Narrow, but never widen, contract.write_scope.
+--forbidden-surfaces <a,b>   Add forbidden paths.
+```
+
+Every forwarded credential variable must be named in `--credential-env`, present in the parent environment, and explicitly authorized by name as a credential environment variable in `contract.authority.grants`. Values that collide with reserved workflow protocol identifiers are rejected before launch. The broad legacy `--allow-credential-env` flag is rejected.
+
+Custom adapter override is intentionally unsafe and explicit:
+
+```bash
+workflow-supervisor delegate \
+  ... \
+  --adapter-command '["custom-agent","--batch"]' \
+  --prompt-mode stdin \
+  --unsafe-adapter-override
+```
+
+An override runs in the governed `--cwd` but is outside the built-in adapter command and permission guarantees. `--prompt-mode` is `stdin` or `arg`.
+
+Built-in adapters give the provider `worker-result-transport-v1.schema.json`, a conservative structured-output grammar accepted by both supported CLIs. It requires every carrier field, so unused `blocker` and `next` values may arrive as empty strings. The wrapper removes those transport placeholders and then applies the stricter canonical `WorkerResultV1` runtime validation: bounds, path safety, uniqueness, status semantics, and exact acceptance-ID coverage. A provider accepting the transport schema is not itself a successful delegation.
+
+Legacy compatibility options are `--dossier <path>` and `--dossier-text <text>`. They cannot be combined with contract options. A valid DossierV1 is converted to DelegationContractV1 and a deprecation warning is included. The accepted legacy `--require-pass` flag is no longer necessary because strict non-PASS exit behavior is the default.
 
 ### `delegate-doctor`
 
-Inspect a delegate adapter. Without `--probe`, this checks for a regular executable file and execute permission and, for built-in adapters, runs the declared bounded `--version` invocation. With `--probe`, it additionally runs a fully validated trivial worker delegation and validates the normalized report path.
+Inspect the configured command, structured-output mode, executable availability, and bounded version invocation. `--probe` additionally runs a read-only contract through the live adapter.
 
 ```bash
-workflow-supervisor delegate-doctor --agent all
+workflow-supervisor delegate-doctor --agent codex
 workflow-supervisor delegate-doctor --agent all --probe --require-pass
-workflow-supervisor delegate-doctor --agent claude-code
-workflow-supervisor delegate-doctor --agent codex --adapter-command '["codex","exec","--json"]' --probe
 ```
 
 Options:
 
 ```text
 --agent codex|claude-code|all
---adapter-command <json>    Override the adapter command as a JSON array of strings.
---prompt-mode stdin|arg
---probe                    Run a trivial WorkerReportV1 delegation check.
---allow-credential-env     Explicitly pass credential-like environment variables to a probe adapter.
---require-pass             Exit nonzero when any inspected adapter is BLOCKED.
+--probe
+--require-pass
 --cwd <path>
---timeout-ms <ms>           Positive integer timeout; the version check is capped at 10000 ms.
+--timeout-ms <integer>
+--credential-env <a,b>
 ```
 
-Use `workflow-supervisor delegate-doctor --agent all --probe --require-pass` as the certification gate in CI or in an environment where both target CLIs are installed. The command still prints JSON diagnostics when it exits nonzero.
+Custom doctor probes accept `--adapter-command`, `--prompt-mode`, and `--unsafe-adapter-override` under the same rules as `delegate`. An adapter override cannot be combined with `--agent all`.
 
-## Exit Codes
+## Output Contracts
 
-- `0`: command completed; normalized `delegate`/`doctor` reports may still be `FAIL` or `BLOCKED` unless `--require-pass` is set
-- `1`: validation, install, argument, filesystem, or explicit `--require-pass` failure
+- `DelegatePreviewV1`: preview metadata; no worker was started.
+- `worker-result-transport-v1.schema.json`: provider-intersection structured-output carrier; not the canonical acceptance contract.
+- `WorkerResultV1`: compact untrusted model output.
+- `WorkerReportV1`: normalized wrapper output printed by `delegate`.
+- `ContractValidationV1`: `validate-contract --json` output.
+- `DossierValidationV1`: legacy `validate-dossier --json` output.
+- `ContextBudgetV1`: `context-budget` output.
+
+See [portable-delegation.md](portable-delegation.md) for the trust model and normalization rules.
+
+## Release Gates
+
+Repository CI runs `npm run validate` on Ubuntu with Node.js 22, 24, and 26, and on macOS and Windows with Node.js 24. Its package job packs the tarball, installs it into a fresh temporary npm consumer, checks the installed version, and runs package validation. A tag-matched release workflow repeats validation and the consumer smoke before attaching the tarball, `SHA256SUMS`, `sbom.cdx.json`, and `provenance.intoto.json` to the GitHub release. It does not publish to npm.

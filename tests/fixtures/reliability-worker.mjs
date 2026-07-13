@@ -7,8 +7,9 @@ for await (const chunk of process.stdin) prompt += chunk;
 
 const mode = process.argv[2] || "pass";
 const target = process.argv[3] || "touched.txt";
-const role = prompt.match(/^Role: (.+)$/m)?.[1] || "verifier";
-const unitId = prompt.match(/^Work unit: (.+)$/m)?.[1] || "U0";
+const assignment = prompt.match(/^Act only as (implementer|verifier|repair|documenter) for unit ([A-Za-z0-9._:-]+)\.$/m);
+const role = assignment?.[1] || prompt.match(/^Role: (.+)$/m)?.[1] || "verifier";
+const unitId = assignment?.[2] || prompt.match(/^Work unit: (.+)$/m)?.[1] || "U0";
 
 function report(overrides = {}) {
   return {
@@ -65,6 +66,9 @@ function writeTarget() {
 if (mode === "edit") {
   writeTarget();
   console.log(JSON.stringify(report()));
+} else if (mode === "edit-reported") {
+  writeTarget();
+  console.log(JSON.stringify(report({ changed_surfaces: [target] })));
 } else if (mode === "mkdir-empty") {
   fs.mkdirSync(path.resolve(process.cwd(), target));
   console.log(JSON.stringify(report()));

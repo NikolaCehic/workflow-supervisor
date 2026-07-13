@@ -6,7 +6,7 @@
   "metadata": "agents/openai.yaml",
   "invocation": "Use $workflow-supervisor ...",
   "delegate": {
-    "command": ["codex", "exec", "--json", "--ephemeral", "--skip-git-repo-check"],
+    "command": ["codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--skip-git-repo-check"],
     "versionArgs": ["--version"],
     "promptMode": "stdin",
     "stdinArg": "-",

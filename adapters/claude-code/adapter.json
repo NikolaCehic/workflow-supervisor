@@ -1,11 +1,11 @@
 {
   "agent": "claude-code",
   "status": "portable",
-  "defaultTarget": "${CLAUDE_HOME:-~/.claude}/skills",
+  "defaultTarget": "${CLAUDE_CONFIG_DIR:-~/.claude}/skills",
   "metadata": "SKILL.md",
   "fallback": "workflow-supervisor emit-context --agent claude-code --out CLAUDE.md",
   "delegate": {
-    "command": ["claude", "-p", "--output-format", "json", "--no-session-persistence"],
+    "command": ["claude", "-p", "--disable-slash-commands", "--strict-mcp-config", "--output-format", "json", "--no-session-persistence"],
     "versionArgs": ["--version"],
     "promptMode": "stdin",
     "schemaMode": "json",

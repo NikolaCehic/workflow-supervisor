@@ -1,8 +1,66 @@
 # Changelog
 
-This changelog was reconstructed from npm publish metadata and git history after the first four package versions were published without GitHub releases or tags.
+The 0.1.x history was reconstructed from npm publish metadata and git history. GitHub releases and npm packages are separate distribution events; a GitHub tag does not prove that the same version is available from npm.
 
 ## Unreleased
+
+## 1.0.0 - 2026-07-13
+
+Version 1.0 replaces the eight-skill workflow framework with one explicit verification skill and a smaller one-shot delegation contract. The default route adds no workflow artifact, while tracked and delegated routes load only the context they need.
+
+### Breaking
+
+- Replaced the eight discoverable 0.x skills with one explicit `workflow-supervisor` skill, invoked with host-native Codex or Claude syntax.
+- Replaced `lean_work_unit_runner`, `strict_full_workflow`, and `planning_only` with the proportional `direct`, `tracked`, and `delegated` routes.
+- Raised the runtime requirement from Node.js 18 to Node.js 22.
+- Made strict JSON `DelegationContractV1` the preferred portable-worker input.
+- Made non-PASS delegation results exit with status `2` by default; `--soft-exit` is the explicit opt-out.
+
+### Added
+
+- Added `context-budget` with exact UTF-8 byte counts, a documented bytes/4 token estimate, and per-profile limits.
+- Added `validate-contract` for compact contracts with explicit authority provenance, inputs, write scope, expected effect, acceptance rows, checks, and stop conditions.
+- Added `delegate --preview` and `--max-prompt-bytes` so callers can inspect command, guard coverage, and prompt size before model execution.
+- Added compact `WorkerResultV1` model output. The wrapper joins immutable contract outcomes and normalizes the result into the existing `WorkerReportV1` envelope.
+- Added a provider-intersection structured-output schema for Codex and Claude Code. Provider output is normalized and then checked against the stricter canonical `WorkerResultV1` runtime rules; provider-schema acceptance alone cannot produce PASS.
+- Added exact-name credential forwarding with `--credential-env`; contract authority must name and explicitly authorize every forwarded variable.
+- Added bounded process-tree execution, timeout and output-overflow cleanup, a quiescence check, and explicit platform limitations in guard warnings.
+- Added shell-free Windows resolution for native executables and recognized npm `.cmd` shims; unknown batch commands fail closed instead of exposing contract or schema arguments to shell interpolation.
+- Added owned-install locking, atomic target replacement, `upgrade`, legacy-skill cleanup, stricter `doctor` checks, and reversible project `.workflow/` ignore handling.
+- Added format-aware migration for every published Codex and Claude Code `0.1.0`-`0.3.0` manifest, including frozen legacy checksums/context and conservative `.gitignore` provenance migration.
+- Added a root Codex plugin and a root Claude marketplace with an entry that points to the isolated `plugins/claude` plugin. Invocation is `$workflow-supervisor` in Codex, `/workflow-supervisor` for a direct Claude skill, and `/workflow-supervisor:workflow-supervisor` for the Claude plugin.
+- Added CI validation on Ubuntu with Node.js 22, 24, and 26 and on macOS and Windows with Node.js 24, plus a fresh-consumer tarball smoke test.
+- Added tagged-release assets for the verified tarball, SHA-256 checksums, a CycloneDX SBOM, and an in-toto provenance statement.
+- Added migration, security, contribution, conduct, support, compatibility, CLI, artifact, and troubleshooting documentation for the v1 boundary.
+
+### Changed
+
+- Reduced the discoverable catalog to one skill and moved tracked/delegated detail into route-specific references.
+- Removed dossier-owned worker prompts and duplicated wrapper metadata from the preferred worker input/output path.
+- Limited worker environments to a small runtime allowlist plus exact authorized credential variables.
+- Required custom adapter commands to opt into `--unsafe-adapter-override`.
+- Made the Claude one-shot adapter disable skills and configured MCP servers while preserving normal OAuth/keychain authentication; it deliberately does not use `--bare`.
+- Honored Claude Code's documented `CLAUDE_CONFIG_DIR` for user-scope skill discovery and delegated-process configuration.
+- Reconciled worker-reported changes with wrapper-observed workspace changes and rejected `mutation_required` PASS when no mutation was observed.
+- Preserved Git commit and content hashes during diagnostic redaction while continuing to remove credential-shaped material.
+- Restricted result extraction to direct output, Claude's successful `structured_output`, or the final Codex `agent_message`; arbitrary command logs and stderr can no longer impersonate a terminal worker result.
+- Required direct and final-agent-message carriers to contain only JSON result objects with whitespace separators; surrounding prose can no longer be silently ignored.
+- Extended the mutation guard across embedded repositories, registered submodules, the full Git control tree, and every workspace-visible symlink in the watched repository root.
+- Made containment, Git-path reconciliation, portable context bytes, and reference identifiers stable across Windows drives, 8.3 path aliases, CRLF checkouts, and native path separators.
+- Preserved legacy DossierV1 forbidden surfaces through migration and rejected ambiguous path/inline contract sources.
+- Kept trusted report IDs, enums, and validated paths structurally stable while scrubbing forwarded credential values from untrusted text and diagnostics; credentials equal to reserved protocol identifiers now block before launch.
+
+### Compatibility
+
+- `DossierV1` input remains available through `validate-dossier`, `--dossier`, and `--dossier-text`; delegation converts it to the compact contract and emits a deprecation warning.
+- Legacy raw `WorkerReportV1` model output remains accepted when it satisfies the strict legacy schema; `WorkerResultV1` is preferred.
+- Automated delegation remains limited to local Codex and Claude Code CLIs. Generic agents support installation and Markdown context export only.
+- Automatic v1 upgrade supports published Codex and Claude Code installs from `0.1.0` through `0.3.0`. Retired OpenCode and HermesAgent copies created by `0.1.0` require the backed-up cleanup sequence in the migration guide.
+- The mutation guard remains detective, scoped to `--cwd`, and unable to guarantee cleanup of deliberately detached descendants. Native permissions and operating-system isolation remain the enforcement boundary.
+
+### Distribution
+
+- The `v1.0.0` GitHub release ships first with the verified tarball, `SHA256SUMS`, `sbom.cdx.json`, and `provenance.intoto.json`. npm publication is a later, separate maintainer action; consumers must check `npm view workflow-supervisor version` before assuming npm carries this release.
 
 ## 0.3.0 - 2026-07-13
 

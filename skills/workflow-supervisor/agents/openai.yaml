@@ -1,7 +1,7 @@
 interface:
   display_name: "Workflow Supervisor"
-  short_description: "Run lean, strict, or planning-only supervised workflows"
-  default_prompt: "Use $workflow-supervisor to route this work proportionally, infer safe reversible defaults, ask only material authority questions, and verify the outcome with evidence."
+  short_description: "Verify delegated Codex and Claude work"
+  default_prompt: "Use $workflow-supervisor to choose the lightest route and require evidence before accepting delegated work."
 
 policy:
   allow_implicit_invocation: false
