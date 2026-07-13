@@ -9,6 +9,17 @@ const text = fs.readFileSync(path.join(repoRoot, "docs/portable-delegation.md"),
 const cliText = fs.readFileSync(path.join(repoRoot, "bin/workflow-skills.mjs"), "utf8");
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
 
+test("package metadata exposes only shipped entry points and directories", () => {
+  assert.equal(Object.hasOwn(packageJson, "main"), false, "CLI-only package must not advertise a library entry point");
+  assert.equal(
+    Object.hasOwn(packageJson.directories ?? {}, "test"),
+    false,
+    "package metadata must not advertise the excluded tests directory",
+  );
+  assert.equal(packageJson.bin?.["workflow-supervisor"], "bin/workflow-skills");
+  assert.equal(packageJson.bin?.["workflow-skills"], "bin/workflow-skills");
+});
+
 test("portable delegation stays a small skill-pack helper, not a harness", () => {
   assert.match(text, /must stay a small skill pack/i);
   assert.match(text, /must not become a daemon, queue, server, scheduler, dashboard, or full agent harness/i);
@@ -50,6 +61,7 @@ test("delegate runtime loads adapter JSON instead of carrying a duplicate comman
 
 test("WorkerReportV1 schema is packaged and native schema adapters are declared", () => {
   const schema = JSON.parse(fs.readFileSync(path.join(repoRoot, "schemas", "worker-report-v1.schema.json"), "utf8"));
+  const workerOutputSchema = JSON.parse(fs.readFileSync(path.join(repoRoot, "schemas", "worker-output-v1.schema.json"), "utf8"));
   const dossierSchema = JSON.parse(fs.readFileSync(path.join(repoRoot, "schemas", "dossier-v1.schema.json"), "utf8"));
   assert.equal(schema.title, "WorkerReportV1");
   assert.equal(dossierSchema.title, "DossierV1");
@@ -66,6 +78,13 @@ test("WorkerReportV1 schema is packaged and native schema adapters are declared"
     "CONDITIONAL_PASS",
   ]);
   assert.ok(packageJson.files.includes("schemas"));
+  assert.equal(workerOutputSchema.allOf[0].$ref, "worker-report-v1.schema.json");
+  for (const field of ["adapter", "guard", "stdout_excerpt", "stderr_excerpt"]) {
+    assert.equal(workerOutputSchema.allOf[1].properties[field].type, "null");
+  }
+  assert.deepEqual(dossierSchema.not.required, ["feedback_loop", "feedback_loop_waiver"]);
+  assert.ok(schema.allOf.some((condition) => condition.if?.properties?.status?.const === "PASS"));
+  assert.ok(schema.$defs.outcomeEvaluation.allOf.some((condition) => condition.if?.properties?.verdict?.const === "PASS"));
 
   assert.match(cliText, /WORKER_REPORT_SCHEMA_PATH/);
   assert.match(cliText, /DOSSIER_SCHEMA_PATH/);
@@ -76,11 +95,23 @@ test("WorkerReportV1 schema is packaged and native schema adapters are declared"
 
   const codex = JSON.parse(fs.readFileSync(path.join(repoRoot, "adapters", "codex", "adapter.json"), "utf8"));
   const claude = JSON.parse(fs.readFileSync(path.join(repoRoot, "adapters", "claude-code", "adapter.json"), "utf8"));
-  assert.ok(codex.delegate.command.includes("service_tier=\"fast\""));
+  assert.equal(codex.delegate.promptMode, "stdin");
+  assert.equal(codex.delegate.stdinArg, "-");
+  assert.ok(codex.delegate.command.includes("--ephemeral"));
+  assert.deepEqual(codex.delegate.roleArgs.verifier, ["--sandbox", "read-only"]);
+  for (const role of ["implementer", "repair", "documenter"]) {
+    assert.deepEqual(codex.delegate.roleArgs[role], ["--sandbox", "workspace-write"]);
+  }
+  assert.equal(codex.delegate.command.some((item) => item.includes("service_tier")), false);
   assert.equal(codex.delegate.schemaMode, "file");
   assert.equal(codex.delegate.schemaFlag, "--output-schema");
   assert.equal(claude.delegate.schemaMode, "json");
   assert.equal(claude.delegate.schemaFlag, "--json-schema");
+  assert.ok(claude.delegate.command.includes("--no-session-persistence"));
+  assert.deepEqual(claude.delegate.roleArgs.verifier, ["--permission-mode", "plan"]);
+  for (const role of ["implementer", "repair", "documenter"]) {
+    assert.deepEqual(claude.delegate.roleArgs[role], ["--permission-mode", "acceptEdits"]);
+  }
   assert.equal(schema.additionalProperties, false);
 });
 

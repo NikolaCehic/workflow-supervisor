@@ -1,7 +1,7 @@
 {
   "name": "workflow-supervisor",
-  "version": "0.2.0",
-  "description": "Portable workflow supervision skills for Codex, Claude Code, and generic agent workspaces.",
+  "version": "0.3.0",
+  "description": "Portable verification and workflow contracts for Codex and Claude Code.",
   "type": "module",
   "repository": {
     "type": "git",
@@ -41,10 +41,16 @@
     "claude-code",
     "skills",
     "workflow",
-    "agent"
+    "agent",
+    "verification",
+    "guardrails",
+    "structured-output"
   ],
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "directories": {
+    "doc": "docs"
   }
 }

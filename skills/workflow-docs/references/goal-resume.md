@@ -2,9 +2,15 @@
 
 Use these only for Codex goal mirroring, active-goal conflicts, or resume packs.
 
+## Contents
+
+- Goal-aware workflow and outcome fields
+- Canonical `GOAL-STATE.md`
+- Human-decision resume rule
+
 Default path: create `GOAL-STATE.md` and goal-aware workflow artifacts under `<workspace>/.workflow/` unless the user provides another artifact directory or the project already has an established workflow-state location.
 
-In Git-backed codebases, ensure `<workspace>/.gitignore` contains `.workflow/` before creating these artifacts. Workflow state is local working memory and should not be staged or published unless explicitly selected as a final deliverable.
+In Git-backed codebases, inspect ignore conventions first. When local mutation is authorized, ensure `.workflow/` is ignored before creating local state; otherwise keep the goal mirror inline or use an already-ignored location. Do not stage or publish workflow state unless explicitly selected as a final deliverable.
 
 ## Goal-Aware WORKFLOW.md Fields
 
@@ -106,4 +112,4 @@ Stale Artifacts Invalidated:
 
 ## Human Decision Resume Rule
 
-When a workflow pauses for a human answer, record the blocker before asking. After the answer arrives, update the decision log, SPEC Q&A, coverage dispositions, and goal mirror before continuing. Resume from the recorded next action and re-run only affected downstream steps. Do not restart complete intake unless the answer changes a required intake decision. If the previous Codex goal is terminal blocked and cannot be reopened, keep that goal reference as history and continue with workflow docs or a newly authorized goal binding.
+When a workflow pauses for a human answer, record the blocker before asking. After the answer arrives, update the decision log, SPEC Q&A, coverage dispositions, and goal mirror before continuing. Resume from the recorded next action and re-run only affected downstream steps. Do not restart routing or unrelated work unless the answer changes the objective or governing boundaries. If the previous Codex goal is terminal blocked and cannot be reopened, keep that goal reference as history and continue with workflow docs or a newly authorized goal binding.

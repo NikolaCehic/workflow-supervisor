@@ -1,7 +1,7 @@
 interface:
   display_name: "Work Unit"
   short_description: "Decompose fuzzy goals into bounded units"
-  default_prompt: "Use $work-unit to split this goal into bounded, verifiable work units."
+  default_prompt: "Use $work-unit to split this broad goal into bounded, observable, independently verifiable units."
 
 policy:
   allow_implicit_invocation: false

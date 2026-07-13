@@ -17,9 +17,13 @@
     "findings",
     "blocking_question",
     "next_action",
+    "verification_environment",
+    "outcome_evaluations",
     "adapter",
     "guard",
-    "reason"
+    "reason",
+    "stdout_excerpt",
+    "stderr_excerpt"
   ],
   "properties": {
     "schema": {
@@ -36,15 +40,20 @@
     },
     "unit_id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "summary": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "changed_surfaces": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
       }
     },
     "evidence": {
@@ -67,61 +76,68 @@
       "type": ["string", "null"]
     },
     "next_action": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "verification_environment": {
-      "$ref": "#/$defs/verificationEnvironment"
+      "anyOf": [
+        { "$ref": "#/$defs/verificationEnvironment" },
+        { "type": "null" }
+      ]
     },
     "outcome_evaluations": {
       "type": "array",
       "items": { "$ref": "#/$defs/outcomeEvaluation" }
     },
     "adapter": {
-      "type": ["object", "null"],
-      "additionalProperties": false,
-      "required": [],
-      "properties": {}
+      "anyOf": [
+        { "$ref": "#/$defs/adapterMeta" },
+        { "type": "null" }
+      ]
     },
     "guard": {
-      "type": ["object", "null"],
-      "additionalProperties": false,
-      "required": [
-        "allowed_surface_violations",
-        "role_violations",
-        "warnings"
-      ],
-      "properties": {
-        "allowed_surface_violations": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "role_violations": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "warnings": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
+      "anyOf": [
+        { "$ref": "#/$defs/guardMeta" },
+        { "type": "null" }
+      ]
     },
     "reason": {
       "type": ["string", "null"]
+    },
+    "stdout_excerpt": {
+      "type": ["string", "null"]
+    },
+    "stderr_excerpt": {
+      "type": ["string", "null"]
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "PASS" } }, "required": ["status"] },
+      "then": { "properties": { "evidence": { "type": "array", "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "role": { "const": "verifier" } }, "required": ["role"] },
+      "then": { "properties": { "changed_surfaces": { "type": "array", "maxItems": 0 } } }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["PASS", "FAIL"] } }, "required": ["status"] },
+      "then": { "properties": { "blocking_question": { "type": "null" } } }
+    }
+  ],
   "$defs": {
     "evidenceEntry": {
       "anyOf": [
-        { "type": "string" },
+        { "type": "string", "minLength": 1, "pattern": "\\S" },
         {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": false,
+          "required": ["kind", "detail"],
+          "properties": {
+            "kind": { "type": "string", "minLength": 1, "pattern": "\\S" },
+            "detail": { "type": "string", "minLength": 1, "pattern": "\\S" }
+          }
         }
       ]
     },
@@ -154,6 +170,16 @@
     "verificationEnvironment": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "shell",
+        "filesystem",
+        "git_diff",
+        "browser",
+        "playwright_mcp",
+        "network",
+        "capabilities",
+        "limitations"
+      ],
       "properties": {
         "shell": { "type": "boolean" },
         "filesystem": { "type": "boolean" },
@@ -164,18 +190,67 @@
         "capabilities": { "$ref": "#/$defs/capabilityList" },
         "limitations": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "adapterMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "command", "exit_code", "timed_out", "source", "schema_mode"],
+      "properties": {
+        "agent": { "type": ["string", "null"] },
+        "command": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "exit_code": { "type": ["integer", "null"] },
+        "timed_out": { "type": "boolean" },
+        "source": { "type": ["string", "null"] },
+        "schema_mode": {
+          "anyOf": [
+            { "type": "string", "enum": ["file", "json"] },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "guardMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_surface_violations", "role_violations", "warnings", "observed_changed_surfaces"],
+      "properties": {
+        "allowed_surface_violations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "role_violations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "observed_changed_surfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         }
       }
     },
     "evidenceStrength": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["strongest_possible", "strongest_available"],
+      "required": ["strongest_possible", "strongest_available", "limitation"],
       "properties": {
         "strongest_possible": { "$ref": "#/$defs/capabilityList" },
         "strongest_available": { "$ref": "#/$defs/capabilityList" },
-        "limitation": { "type": "string" }
+        "limitation": { "type": ["string", "null"] }
       }
     },
     "outcomeEvaluation": {
@@ -190,12 +265,16 @@
         "evidence_strength",
         "evidence",
         "invalid_pass_conditions",
-        "verdict"
+        "verdict",
+        "limitation",
+        "capability_limitations",
+        "required_external_check",
+        "finding"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "source_requirement": { "type": "string", "minLength": 1 },
-        "expected_outcome": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "source_requirement": { "$ref": "#/$defs/nonEmptyString" },
+        "expected_outcome": { "$ref": "#/$defs/nonEmptyString" },
         "preferred_verification": { "$ref": "#/$defs/capabilityList" },
         "available_verification": { "$ref": "#/$defs/capabilityList" },
         "evidence_strength": { "$ref": "#/$defs/evidenceStrength" },
@@ -205,23 +284,34 @@
         },
         "invalid_pass_conditions": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         },
         "verdict": {
           "type": "string",
           "enum": ["PASS", "FAIL", "BLOCKED", "CONDITIONAL_PASS"]
         },
-        "limitation": { "type": "string" },
+        "limitation": { "type": ["string", "null"] },
         "capability_limitations": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         },
         "required_external_check": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         },
-        "finding": { "type": "string" }
-      }
+        "finding": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "verdict": { "const": "PASS" } }, "required": ["verdict"] },
+          "then": { "properties": { "evidence": { "type": "array", "minItems": 1 } } }
+        }
+      ]
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
     }
   }
 }

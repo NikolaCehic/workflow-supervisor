@@ -2,6 +2,31 @@
 
 This changelog was reconstructed from npm publish metadata and git history after the first four package versions were published without GitHub releases or tags.
 
+## Unreleased
+
+## 0.3.0 - 2026-07-13
+
+Reframed Workflow Supervisor as a portable verification and workflow-contract layer that complements native Codex and Claude Code orchestration. This release reduces model-facing overhead while hardening delegation, evidence, filesystem boundaries, installation, and packaging.
+
+### Changed
+
+- Reduced core supervisor prompt weight through profile routing, on-demand roles, progressive disclosure, explicit invocation metadata, and lean portable context defaults.
+- Aligned role, authority, waiver, dossier, lifecycle, and verification guidance across all eight skills and their durable templates.
+- Aligned the built-in Codex and Claude Code adapters with their documented non-interactive, schema-output, permission, and stdin interfaces, and covered them with adapter-contract tests.
+
+### Fixed
+
+- Hardened DossierV1 parsing/validation against duplicate or prototype-control keys, vague or non-portable boundaries, role/authority mismatch, malformed feedback-loop waivers, and schema/runtime drift.
+- Hardened WorkerReportV1 handling against multiple reports, missing or unmapped evidence, wrapper-field spoofing, self-reported boundary violations, structural redaction corruption, and diagnostic secret leakage.
+- Hardened surface detection across dirty files, ignored files, nested repositories, complete Git control state, symlink escapes, hard-link aliases, and adapter failures.
+- Made install, uninstall, generated context, manifests, and project ignore state ownership-aware, atomic, overlap-safe, checksum-verified, and doctor-verifiable.
+- Removed stale library and test-directory package metadata so the CLI-only tarball advertises only entry points and directories it actually ships.
+
+### Verified
+
+- Added adversarial regressions for schema mutation, parser pollution, filesystem aliasing, adapter permission drift, credential denial, transactional installs, normalized reports, and packed-tarball operation.
+- Validated the complete suite on Node.js 18, 20, 22, and 25, compiled all JSON Schemas in strict Draft 2020 mode, checked published YAML examples with Ruby Psych, and exercised the packed 48-file consumer lifecycle.
+
 ## 0.2.0 - 2026-06-23
 
 Prepared outcome-evaluation verification for npm publication.
@@ -113,7 +138,7 @@ Commit: `ee4c02b`
 ### Changed
 
 - Renamed the primary package executable path around `workflow-supervisor` while keeping `workflow-skills` as an executable alias.
-- Narrowed certified install/delegation targets to Codex, Claude Code, and generic Markdown contexts.
+- Narrowed built-in install/delegation targets to Codex, Claude Code, and generic Markdown contexts.
 - Strengthened validation to include adapter metadata and schema artifacts.
 
 ### Verified
