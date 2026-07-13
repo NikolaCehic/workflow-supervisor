@@ -56,9 +56,17 @@ test("Windows npm command shims resolve without shell interpolation", (t) => {
   assert.equal(nativeInvocation.command, fs.realpathSync(nativeTarget));
   assert.deepEqual(nativeInvocation.args, forwarded);
 
-  if (process.platform !== "win32") {
-    const linkedNative = path.join(directory, "linked-native.EXE");
-    fs.symlinkSync(nativeTarget, linkedNative);
+  const linkedNative = path.join(directory, "linked-native.EXE");
+  let fileLinksAvailable = true;
+  try {
+    fs.symlinkSync(nativeTarget, linkedNative, "file");
+  } catch (error) {
+    if (process.platform !== "win32" || !["EPERM", "EACCES", "ENOTSUP"].includes(error?.code)) throw error;
+    fileLinksAvailable = false;
+    t.diagnostic(`Windows runner cannot create file links; WinGet-link regression used canonicalization-only coverage: ${error.code}`);
+  }
+
+  if (fileLinksAvailable) {
     const linkedInvocation = prepareProcessInvocation({
       command: linkedNative,
       args: forwarded,
@@ -70,7 +78,7 @@ test("Windows npm command shims resolve without shell interpolation", (t) => {
     assert.deepEqual(linkedInvocation.args, forwarded);
 
     const dangling = path.join(directory, "dangling.EXE");
-    fs.symlinkSync(path.join(directory, "missing.exe"), dangling);
+    fs.symlinkSync(path.join(directory, "missing.exe"), dangling, "file");
     assert.throws(
       () => prepareProcessInvocation({
         command: dangling,
@@ -83,7 +91,7 @@ test("Windows npm command shims resolve without shell interpolation", (t) => {
     );
 
     const linkedDirectory = path.join(directory, "directory.EXE");
-    fs.symlinkSync(path.join(directory, "node_modules"), linkedDirectory, "dir");
+    fs.symlinkSync(path.join(directory, "node_modules"), linkedDirectory, process.platform === "win32" ? "junction" : "dir");
     assert.throws(
       () => prepareProcessInvocation({
         command: linkedDirectory,
